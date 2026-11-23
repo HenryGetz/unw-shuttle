@@ -1,5 +1,5 @@
 import type { StopId, Trip } from '../data/types';
-import { STOPS, STOP_ORDER } from '../data/route';
+import { STOPS, STOP_ORDER, stopShortLabel } from '../data/route';
 import { departuresForStop, routeForTrip, tripWindow } from '../lib/schedule';
 import type { ServiceSnapshot } from '../lib/schedule';
 import { formatDateKey, formatTime } from '../lib/time';
@@ -27,7 +27,7 @@ export function StopDetail({ now, info, stop, billyStop, onClear, onSelect }: St
       <section className="panel stop-detail" aria-labelledby="stop-detail-title">
         <div className="panel-head">
           <div>
-            <p className="eyebrow">Stop details</p>
+            <p className="eyebrow">Stop explorer</p>
             <h2 id="stop-detail-title">Choose a stop</h2>
           </div>
         </div>
@@ -37,7 +37,7 @@ export function StopDetail({ now, info, stop, billyStop, onClear, onSelect }: St
         <div className="stop-chips">
           {STOP_ORDER.map((stopId) => (
             <button key={stopId} type="button" className="stop-chip" onClick={() => onSelect(stopId)}>
-              {STOPS[stopId].shortName}
+              {stopShortLabel(stopId, billyStop)}
             </button>
           ))}
         </div>
@@ -98,7 +98,7 @@ export function StopDetail({ now, info, stop, billyStop, onClear, onSelect }: St
     <section className="panel stop-detail stop-detail--selected" aria-labelledby="stop-detail-title">
       <header className="panel-head stop-detail__head">
         <div>
-          <p className="eyebrow">Stop details</p>
+          <p className="eyebrow">Stop explorer</p>
           <h2 id="stop-detail-title">{stopInfo.name}</h2>
           <p className="stop-detail__sub">{stopInfo.subtitle}</p>
         </div>

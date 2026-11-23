@@ -1,0 +1,734 @@
+/* 3D scene overlays and the nocturnal 2D campus map. Owned by the map slice. */
+
+/* Scene label layer ------------------------------------------------------ */
+
+.scene-root {
+  --scene-inset-top: 96px;
+  --scene-inset-right: 12px;
+  --scene-inset-bottom: 86px;
+  --scene-inset-left: 12px;
+}
+
+.scene-canvas canvas {
+  display: block;
+  /* OrbitControls sets touch-action:none inline; pan-y keeps vertical page
+     scrolling working on touch devices. */
+  touch-action: pan-y !important;
+}
+
+.scene-labels {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+  contain: layout paint style;
+  font-family: var(--font-body, ui-sans-serif, system-ui, sans-serif);
+}
+
+.scene-labels__stems {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.scene-stem {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 1px;
+  border-radius: 999px;
+  transform-origin: 0 50%;
+  opacity: 0.48;
+  will-change: transform, width;
+}
+
+.scene-stem[data-hidden='true'] {
+  opacity: 0;
+}
+
+.scene-stem--bus {
+  height: 1.5px;
+  opacity: 0.7;
+}
+
+.scene-stem--place {
+  opacity: 0.3;
+}
+
+.scene-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  margin: 0;
+  white-space: nowrap;
+  will-change: transform;
+  transition: opacity 120ms ease;
+}
+
+.scene-label[data-hidden='true'] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.scene-label--stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 4px 9px;
+  border: 1px solid rgba(202, 187, 234, 0.26);
+  border-radius: 999px;
+  background: rgba(15, 10, 24, 0.84);
+  color: #e4d9f3;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 4px 14px rgba(4, 1, 10, 0.46);
+  backdrop-filter: blur(6px);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Keep the compact pill look while giving touch the full 44px target. */
+.scene-label--stop::after {
+  content: '';
+  position: absolute;
+  inset: -9px -6px;
+  border-radius: 999px;
+}
+
+.scene-label--stop:hover {
+  border-color: rgba(242, 183, 5, 0.55);
+  color: #fff;
+}
+
+.scene-label--stop:focus-visible {
+  outline: 2px solid var(--gold, #f2b705);
+  outline-offset: 2px;
+}
+
+.scene-label--primary {
+  font-weight: 700;
+}
+
+.scene-label__dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.82;
+}
+
+.scene-label--stop.is-pinned {
+  border-color: rgba(242, 183, 5, 0.68);
+  box-shadow:
+    0 0 0 2px rgba(242, 183, 5, 0.2),
+    0 6px 18px rgba(4, 1, 10, 0.5);
+}
+
+.scene-label--stop.is-pinned .scene-label__dot {
+  background: var(--gold, #f2b705);
+  opacity: 1;
+}
+
+.scene-label--stop.is-selected {
+  border-color: var(--gold-bright, #f5c024);
+  background: linear-gradient(180deg, #f5c024, #e8ad00);
+  color: #1a0f2e;
+  box-shadow:
+    0 0 0 3px rgba(242, 183, 5, 0.26),
+    0 8px 20px rgba(4, 1, 10, 0.5);
+}
+
+.scene-label--stop.is-selected .scene-label__dot {
+  background: #1a0f2e;
+  opacity: 1;
+}
+
+.scene-label__short {
+  display: none;
+}
+
+/* Compact viewports: only secondary stops abbreviate; pinned/selected stay full. */
+.scene-labels[data-compact='true']
+  .scene-label--stop:not(.is-pinned):not(.is-selected)
+  .scene-label__full {
+  display: none;
+}
+
+.scene-labels[data-compact='true']
+  .scene-label--stop:not(.is-pinned):not(.is-selected)
+  .scene-label__short {
+  display: inline;
+}
+
+.scene-label--bus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 27px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f7cd3f, #f2b705);
+  color: #241703;
+  font-family: var(--font-body, ui-sans-serif, system-ui, sans-serif);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-transform: uppercase;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 3px rgba(242, 183, 5, 0.2),
+    0 10px 24px rgba(4, 1, 10, 0.56);
+}
+
+.scene-label__beacon {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: #fff8e1;
+  box-shadow: 0 0 0 2px rgba(26, 15, 46, 0.18);
+}
+
+.scene-label--place {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  border: 1px solid rgba(182, 166, 220, 0.14);
+  border-radius: 7px;
+  background: rgba(10, 7, 19, 0.62);
+  color: var(--text-3, #a99cbf);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+.scene-label__mark {
+  width: 4px;
+  height: 4px;
+  flex: none;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.8;
+}
+
+.scene-label--academic {
+  color: #c8b7ec;
+}
+
+.scene-label--residential {
+  color: #a9b8d8;
+}
+
+.scene-label--athletic {
+  color: #b4c7ac;
+}
+
+.scene-label--landmark {
+  border-color: rgba(224, 177, 131, 0.22);
+  color: #e0b183;
+}
+
+.scene-label--context {
+  color: #9d92b4;
+}
+
+.scene-label--edge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 11px;
+  border: 1px solid rgba(242, 183, 5, 0.5);
+  border-radius: 999px;
+  background: rgba(24, 15, 40, 0.92);
+  color: #f4dfae;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 8px 20px rgba(4, 1, 10, 0.46);
+  backdrop-filter: blur(8px);
+}
+
+.scene-label--edge:hover {
+  background: rgba(46, 27, 70, 0.96);
+  color: #fff4d6;
+}
+
+.scene-label--edge:focus-visible {
+  outline: 2px solid var(--gold, #f2b705);
+  outline-offset: 2px;
+}
+
+.scene-label--edge::after {
+  content: '';
+  position: absolute;
+  inset: -7px -4px;
+  border-radius: 999px;
+}
+
+.scene-labels--still .scene-label {
+  transition: none;
+}
+
+/* 2D map ---------------------------------------------------------------- */
+
+/* The campus is a tall, north-south plan. In the full-bleed landscape stage
+   it scrolls vertically at a readable scale instead of shrinking to a strip. */
+.map-hero__stage.map-hero__stage--2d {
+  background:
+    radial-gradient(760px 520px at 50% 42%, rgba(46, 27, 70, 0.5), transparent 72%),
+    var(--bg-deep);
+}
+
+.map-hero__stage.map-hero__stage--2d .map-hero__scene {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(220, 206, 245, 0.24) transparent;
+}
+
+.map-hero__stage.map-hero__stage--2d .map-hero__scene > svg {
+  display: block;
+  width: min(100%, 820px);
+  height: auto;
+  min-height: 100%;
+  margin-inline: auto;
+  border-inline: 1px solid rgba(220, 206, 245, 0.08);
+  background: #0c0816;
+  box-shadow: 0 28px 90px rgba(3, 0, 8, 0.6);
+}
+
+.map-stage--2d {
+  background: radial-gradient(120% 80% at 50% 24%, #1a1228 0%, #0a0713 72%);
+}
+
+.map-ground {
+  fill: #0c0816;
+}
+
+.map-water__shape {
+  fill: #0b1230;
+  stroke: rgba(78, 95, 147, 0.34);
+  stroke-width: 1.6;
+}
+
+.map-campus-boundary {
+  fill: #171022;
+  stroke: rgba(93, 77, 133, 0.5);
+  stroke-width: 3;
+  stroke-dasharray: 12 12;
+}
+
+.map-road {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.map-road--service {
+  stroke: rgba(120, 105, 160, 0.1);
+}
+
+.map-road--residential {
+  stroke: rgba(130, 115, 170, 0.2);
+}
+
+.map-road--tertiary {
+  stroke: rgba(150, 137, 196, 0.3);
+}
+
+.map-road--trunk {
+  stroke: rgba(173, 161, 214, 0.4);
+}
+
+.map-building {
+  stroke-width: 1.2;
+}
+
+.map-building--context {
+  fill: #1c1529;
+  stroke: rgba(157, 146, 180, 0.16);
+}
+
+.map-building--residential {
+  fill: #2c3a57;
+  stroke: rgba(169, 184, 216, 0.26);
+}
+
+.map-building--academic {
+  fill: #3d2b58;
+  stroke: rgba(200, 183, 236, 0.3);
+}
+
+.map-building--athletic {
+  fill: #33453c;
+  stroke: rgba(180, 199, 172, 0.26);
+}
+
+.map-building--landmark {
+  fill: #4d372f;
+  stroke: rgba(224, 177, 131, 0.42);
+}
+
+.map-route {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.map-route--inactive {
+  stroke: #4a3d63;
+  stroke-width: 7;
+  opacity: 0.55;
+  stroke-dasharray: 18 14;
+}
+
+.map-route--warm {
+  stroke: #f5c024;
+  stroke-width: 24;
+  opacity: 0.1;
+}
+
+.map-route--active {
+  stroke: #f2b705;
+  stroke-width: 9;
+  opacity: 0.95;
+}
+
+.map-building-label {
+  fill: rgba(232, 223, 246, 0.78);
+  font-family: var(--font-body, ui-sans-serif, system-ui, sans-serif);
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  paint-order: stroke;
+  stroke: #0c0816;
+  stroke-width: 7px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.map-building-label--academic {
+  fill: #c8b7ec;
+}
+
+.map-building-label--residential {
+  fill: #a9b8d8;
+}
+
+.map-building-label--athletic {
+  fill: #b4c7ac;
+}
+
+.map-building-label--landmark {
+  fill: #e0b183;
+}
+
+.map-building-label--context {
+  fill: #9d92b4;
+}
+
+.map-building-label--anchor {
+  font-size: 21px;
+  font-weight: 500;
+  opacity: 0.86;
+}
+
+.map-stop {
+  cursor: pointer;
+  outline: none;
+}
+
+.map-stop__hit {
+  fill: transparent;
+}
+
+.map-stop__focus {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 3;
+}
+
+.map-stop:focus-visible .map-stop__focus {
+  stroke: #f2b705;
+}
+
+.map-stop__selection {
+  fill: none;
+  stroke: #f2b705;
+  stroke-width: 2;
+  stroke-dasharray: 4 6;
+  opacity: 0.85;
+}
+
+.map-stop__halo {
+  fill: #0c0816;
+  stroke: #b6a6dc;
+  stroke-width: 4.5;
+}
+
+.map-stop--ram .map-stop__halo {
+  stroke: #cabbea;
+}
+
+.map-stop--billy .map-stop__halo {
+  stroke: #f2b705;
+}
+
+.map-stop--selected .map-stop__halo {
+  stroke: #f5c024;
+  stroke-width: 5;
+}
+
+.map-stop__dot {
+  fill: #f8f6fc;
+}
+
+.map-stop__label {
+  fill: #e4d9f3;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  paint-order: stroke;
+  stroke: #0c0816;
+  stroke-width: 7px;
+}
+
+.map-stop__label--primary {
+  fill: #f8f6fc;
+  font-weight: 700;
+}
+
+.map-stop--ram .map-stop__label--primary {
+  fill: #cabbea;
+}
+
+.map-stop--billy .map-stop__label--primary {
+  fill: #f2b705;
+}
+
+.map-stop__label-sub {
+  fill: #e0b183;
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.map-stop--selected .map-stop__label,
+.map-stop:hover .map-stop__label {
+  fill: #ffffff;
+}
+
+.map-stop:hover .map-stop__halo {
+  stroke: #f5c024;
+}
+
+.map-bus {
+  pointer-events: none;
+  transition: transform 900ms linear;
+}
+
+.map-bus__glow {
+  fill: #f2b705;
+  opacity: 0.16;
+}
+
+.map-bus__body {
+  fill: #f2b705;
+  stroke: #0c0816;
+  stroke-width: 3;
+}
+
+.map-bus__window {
+  fill: #1b1430;
+}
+
+.map-bus__nose {
+  fill: #f5c024;
+}
+
+.map-bus__wheel {
+  fill: #0b0812;
+}
+
+.map-bus--returning .map-bus__glow {
+  fill: #f5c024;
+}
+
+.map-bus--returning .map-bus__body,
+.map-bus--returning .map-bus__nose {
+  fill: #f5c024;
+}
+
+.map-bus--parked .map-bus__glow {
+  fill: #a99cbf;
+  opacity: 0.1;
+}
+
+.map-bus--parked .map-bus__body,
+.map-bus--parked .map-bus__nose {
+  fill: #a99cbf;
+}
+
+.map-bus--off .map-bus__glow {
+  fill: #7e7194;
+  opacity: 0.06;
+}
+
+.map-bus--off .map-bus__body,
+.map-bus--off .map-bus__nose {
+  fill: #7e7194;
+}
+
+.map-north path {
+  fill: #a99cbf;
+}
+
+.map-north text {
+  fill: #a99cbf;
+  font-family: var(--font-body, ui-sans-serif, system-ui, sans-serif);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* Shared map chrome ----------------------------------------------------- */
+
+.map-legend__item {
+  color: var(--text-3, #a99cbf);
+}
+
+.legend-line--active {
+  background: #f2b705;
+}
+
+.legend-line--inactive {
+  background: #4a3d63;
+}
+
+.legend-dot--ram {
+  background: #cabbea;
+}
+
+.legend-dot--billy {
+  background: #f2b705;
+}
+
+.map-offmap__chip {
+  border: 1px solid var(--line-strong, rgba(220, 206, 245, 0.24));
+  background: rgba(15, 10, 23, 0.94);
+  color: var(--text-2, #d8cfe5);
+}
+
+.map-offmap__chip.is-selected,
+.map-offmap__chip[aria-pressed='true'] {
+  border-color: rgba(242, 183, 5, 0.55);
+  background: rgba(242, 183, 5, 0.14);
+}
+
+.map-offmap__chip--bus {
+  color: var(--text-3, #a99cbf);
+}
+
+.map-offmap__arrow {
+  color: #f2b705;
+}
+
+.map-caption__billy strong {
+  color: #f2b705;
+}
+
+.map-loading {
+  color: var(--text-3, #a99cbf);
+}
+
+.map-fallback__body {
+  color: var(--text-3, #a99cbf);
+}
+
+@media (max-width: 760px) {
+  .map-building-label--anchor {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .scene-root {
+    --scene-inset-top: 112px;
+    --scene-inset-right: 10px;
+    --scene-inset-bottom: 104px;
+    --scene-inset-left: 10px;
+  }
+}
+
+@media (max-width: 520px) {
+  .map-building-label--minor {
+    display: none;
+  }
+
+  .map-building-label {
+    font-size: 26px;
+  }
+
+  .scene-label--stop {
+    min-height: 25px;
+    padding: 4px 8px;
+    font-size: 10.5px;
+  }
+
+  .scene-label--bus {
+    height: 25px;
+    padding: 0 9px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+
+  .scene-label--place {
+    font-size: 9.5px;
+  }
+}
+
+@media (max-width: 430px) {
+  .scene-label__full {
+    display: none;
+  }
+
+  .scene-label__short {
+    display: inline;
+  }
+
+  .scene-label--stop {
+    gap: 5px;
+    padding: 4px 7px;
+  }
+
+  .map-stop__label {
+    font-size: 38px;
+  }
+
+  .map-building-label {
+    font-size: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-label {
+    transition: none;
+  }
+
+  .map-bus {
+    transition: none;
+  }
+}

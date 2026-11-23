@@ -2,53 +2,46 @@ import { useEffect, useMemo, useRef, type ComponentRef } from 'react';
 import { OrbitControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { followPose, presetPose } from './cameraPoses';
+import type { SceneCamera } from './contracts';
 import type { BusAnchor } from './palette';
-
-export type CameraPresetId = 'campus' | 'whole';
-
-interface CameraPose {
-  position: [number, number, number];
-  target: [number, number, number];
-}
-
-export const CAMERA_PRESETS: Record<CameraPresetId, CameraPose> = {
-  campus: { position: [500, 820, 1350], target: [-110, 0, -20] },
-  whole: { position: [900, 1600, 2900], target: [-120, 0, 300] },
-};
-
-export const DEFAULT_CAMERA_POSITION = CAMERA_PRESETS.campus.position;
-export const DEFAULT_CAMERA_TARGET = CAMERA_PRESETS.campus.target;
 
 interface CameraRigProps {
   anchor: BusAnchor;
-  following: boolean;
-  preset: CameraPresetId;
-  viewKey: number;
+  mode: SceneCamera;
+  resetToken: number;
 }
 
-export function CameraRig({ anchor, following, preset, viewKey }: CameraRigProps) {
-  const camera = useThree((state) => state.camera);
+export function CameraRig({ anchor, mode, resetToken }: CameraRigProps) {
+  const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera;
+  const size = useThree((state) => state.size);
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
-  const resetting = useRef(false);
-  const handledView = useRef(viewKey);
+  const resetting = useRef(true);
+  const lastAnchor = useRef({ x: anchor.x, z: anchor.z });
+  const latestAnchor = useRef(anchor);
+  latestAnchor.current = anchor;
+  const handledReset = useRef(resetToken);
 
-  const goal = useMemo(() => {
-    const pose = CAMERA_PRESETS[preset];
-    return {
-      position: new THREE.Vector3(...pose.position),
-      target: new THREE.Vector3(...pose.target),
-    };
-  }, [preset]);
+  const aspect = size.width > 0 && size.height > 0 ? size.width / size.height : 1;
+
+  const staticPose = useMemo(() => {
+    if (mode === 'follow') return null;
+    return presetPose(mode, camera, aspect);
+  }, [aspect, camera, mode]);
 
   useEffect(() => {
-    if (handledView.current === viewKey) return;
-    handledView.current = viewKey;
     resetting.current = true;
-  }, [viewKey]);
+    lastAnchor.current = { ...latestAnchor.current };
+    // Recenter on a mode or viewport change, not on every bus update: follow
+    // mode translates an orbit the user has already adjusted.
+  }, [mode, staticPose]);
 
   useEffect(() => {
-    if (following) resetting.current = false;
-  }, [following]);
+    if (handledReset.current === resetToken) return;
+    handledReset.current = resetToken;
+    resetting.current = true;
+    lastAnchor.current = { x: anchor.x, z: anchor.z };
+  }, [anchor, mode, resetToken, staticPose]);
 
   useFrame((_, delta) => {
     const orbit = controls.current;
@@ -56,55 +49,69 @@ export function CameraRig({ anchor, following, preset, viewKey }: CameraRigProps
     const dt = Math.min(delta, 0.1);
 
     if (resetting.current) {
+      const target = mode === 'follow' ? followPose(anchor) : staticPose;
+      if (!target) {
+        resetting.current = false;
+        return;
+      }
       camera.position.set(
-        THREE.MathUtils.damp(camera.position.x, goal.position.x, 3.4, dt),
-        THREE.MathUtils.damp(camera.position.y, goal.position.y, 3.4, dt),
-        THREE.MathUtils.damp(camera.position.z, goal.position.z, 3.4, dt),
+        THREE.MathUtils.damp(camera.position.x, target.position.x, 3.2, dt),
+        THREE.MathUtils.damp(camera.position.y, target.position.y, 3.2, dt),
+        THREE.MathUtils.damp(camera.position.z, target.position.z, 3.2, dt),
       );
       orbit.target.set(
-        THREE.MathUtils.damp(orbit.target.x, goal.target.x, 3.4, dt),
-        THREE.MathUtils.damp(orbit.target.y, goal.target.y, 3.4, dt),
-        THREE.MathUtils.damp(orbit.target.z, goal.target.z, 3.4, dt),
+        THREE.MathUtils.damp(orbit.target.x, target.target.x, 3.4, dt),
+        THREE.MathUtils.damp(orbit.target.y, target.target.y, 3.4, dt),
+        THREE.MathUtils.damp(orbit.target.z, target.target.z, 3.4, dt),
       );
       orbit.update();
 
-      const dx = camera.position.x - goal.position.x;
-      const dy = camera.position.y - goal.position.y;
-      const dz = camera.position.z - goal.position.z;
-      const tx = orbit.target.x - goal.target.x;
-      const ty = orbit.target.y - goal.target.y;
-      const tz = orbit.target.z - goal.target.z;
-      if (dx * dx + dy * dy + dz * dz < 25 && tx * tx + ty * ty + tz * tz < 25) {
+      const distance =
+        camera.position.distanceToSquared(target.position) +
+        orbit.target.distanceToSquared(target.target);
+      if (distance < 32) {
         resetting.current = false;
+        lastAnchor.current = { x: anchor.x, z: anchor.z };
       }
       return;
     }
 
-    if (!following) return;
-    orbit.target.set(
-      THREE.MathUtils.damp(orbit.target.x, anchor.x, 2.6, dt),
-      THREE.MathUtils.damp(orbit.target.y, 2, 2.6, dt),
-      THREE.MathUtils.damp(orbit.target.z, anchor.z, 2.6, dt),
-    );
-    orbit.update();
+    if (mode !== 'follow') {
+      lastAnchor.current = { x: anchor.x, z: anchor.z };
+      return;
+    }
+
+    // Translate the whole orbit rig with the bus so manual rotate/zoom/pan
+    // survives tracking instead of being fought by a recentering target.
+    const dx = anchor.x - lastAnchor.current.x;
+    const dz = anchor.z - lastAnchor.current.z;
+    if (dx !== 0 || dz !== 0) {
+      camera.position.x += dx;
+      camera.position.z += dz;
+      orbit.target.x += dx;
+      orbit.target.z += dz;
+      orbit.update();
+    }
+    lastAnchor.current = { x: anchor.x, z: anchor.z };
   });
 
   return (
     <OrbitControls
       ref={controls}
       makeDefault
-      target={DEFAULT_CAMERA_TARGET}
       enableDamping
-      dampingFactor={0.075}
-      enablePan={false}
-      minDistance={220}
-      maxDistance={4200}
-      minPolarAngle={0.18}
-      maxPolarAngle={1.36}
-      rotateSpeed={0.6}
-      zoomSpeed={0.85}
+      dampingFactor={0.08}
+      enablePan={mode !== 'follow'}
+      panSpeed={0.85}
+      minDistance={140}
+      maxDistance={6400}
+      minPolarAngle={0.14}
+      maxPolarAngle={1.42}
+      rotateSpeed={0.55}
+      zoomSpeed={0.82}
       onStart={() => {
         resetting.current = false;
+        lastAnchor.current = { x: anchor.x, z: anchor.z };
       }}
     />
   );

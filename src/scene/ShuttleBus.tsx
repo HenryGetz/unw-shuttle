@@ -1,9 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { BusState } from '../lib/schedule';
-import { STOPS, STOP_ORDER } from '../data/route';
 import { PALETTE, type BusAnchor } from './palette';
 
 interface ShuttleBusProps {
@@ -16,8 +14,7 @@ export function ShuttleBus({ bus, anchor, reducedMotion }: ShuttleBusProps) {
   const group = useRef<THREE.Group>(null);
   const halo = useRef<THREE.Mesh>(null);
   const haloMaterial = useRef<THREE.MeshBasicMaterial>(null);
-  const beaconMaterial = useRef<THREE.MeshBasicMaterial>(null);
-  const beamMaterial = useRef<THREE.MeshBasicMaterial>(null);
+  const beaconMaterial = useRef<THREE.MeshStandardMaterial>(null);
 
   const target = useRef({
     x: bus.position.x,
@@ -30,9 +27,6 @@ export function ShuttleBus({ bus, anchor, reducedMotion }: ShuttleBusProps) {
     z: bus.position.z,
     heading: bus.heading,
   });
-  const atStop = STOP_ORDER.some(
-    (id) => Math.hypot(bus.position.x - STOPS[id].x, bus.position.z - STOPS[id].z) < 34,
-  );
 
   useEffect(() => {
     target.current.x = bus.position.x;
@@ -66,89 +60,109 @@ export function ShuttleBus({ bus, anchor, reducedMotion }: ShuttleBusProps) {
 
     if (!next.visible) return;
 
-    const pulse = reducedMotion ? 0.5 : 0.5 + Math.sin(state.clock.elapsedTime * 2.3) * 0.5;
-    if (halo.current) halo.current.scale.setScalar(1 + pulse * 0.85);
-    if (haloMaterial.current) haloMaterial.current.opacity = reducedMotion ? 0.32 : 0.46 - pulse * 0.22;
-    if (beaconMaterial.current) beaconMaterial.current.opacity = reducedMotion ? 0.92 : 0.6 + pulse * 0.4;
-    if (beamMaterial.current) beamMaterial.current.opacity = reducedMotion ? 0.22 : 0.18 + pulse * 0.12;
+    const pulse = reducedMotion ? 0.35 : 0.35 + Math.sin(state.clock.elapsedTime * 1.6) * 0.25;
+    if (halo.current) halo.current.scale.setScalar(1 + pulse * 0.18);
+    if (haloMaterial.current) haloMaterial.current.opacity = reducedMotion ? 0.12 : 0.08 + pulse * 0.08;
+    if (beaconMaterial.current) {
+      beaconMaterial.current.emissiveIntensity = reducedMotion ? 0.9 : 0.5 + pulse * 0.9;
+    }
   });
 
   return (
-    <group ref={group} position={[bus.position.x, 0, bus.position.z]} rotation-y={bus.heading}>
-      <mesh rotation-x={-Math.PI / 2} position-y={0.06} scale={[2.2, 3.3, 1]} renderOrder={0}>
+    <group
+      ref={group}
+      position={[bus.position.x, 0, bus.position.z]}
+      rotation-y={bus.heading}
+      scale={2.4}
+    >
+      <mesh rotation-x={-Math.PI / 2} position-y={0.06} scale={[2.1, 3.2, 1]} renderOrder={0}>
         <circleGeometry args={[4.6, 28]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.1} depthWrite={false} />
+        <meshBasicMaterial color="#000000" transparent opacity={0.16} depthWrite={false} />
       </mesh>
-      <mesh rotation-x={-Math.PI / 2} position-y={0.07} scale={[1.7, 2.7, 1]} renderOrder={1}>
+      <mesh rotation-x={-Math.PI / 2} position-y={0.07} scale={[1.5, 2.4, 1]} renderOrder={1}>
         <circleGeometry args={[4.6, 28]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.2} depthWrite={false} />
-      </mesh>
-      <mesh rotation-x={-Math.PI / 2} position-y={0.08} scale={[1.25, 2.05, 1]} renderOrder={2}>
-        <circleGeometry args={[4.6, 28]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.4} depthWrite={false} />
+        <meshBasicMaterial color="#000000" transparent opacity={0.28} depthWrite={false} />
       </mesh>
 
-      <mesh position-y={0.9}>
-        <boxGeometry args={[2.45, 0.8, 8.2]} />
-        <meshStandardMaterial color={PALETTE.busBodyDark} roughness={0.6} metalness={0.25} />
+      <mesh position-y={0.95}>
+        <boxGeometry args={[2.45, 0.82, 8.2]} />
+        <meshStandardMaterial
+          color={PALETTE.busBody}
+          roughness={0.48}
+          metalness={0.22}
+          emissive="#3a2a02"
+          emissiveIntensity={0.22}
+        />
       </mesh>
-      <mesh position-y={2.15}>
-        <boxGeometry args={[2.55, 1.7, 8.3]} />
-        <meshStandardMaterial color={PALETTE.busBody} roughness={0.52} metalness={0.22} />
+      <mesh position-y={2.18}>
+        <boxGeometry args={[2.55, 1.68, 8.3]} />
+        <meshStandardMaterial
+          color={PALETTE.busUpper}
+          roughness={0.5}
+          metalness={0.16}
+          emissive="#3d3427"
+          emissiveIntensity={0.28}
+        />
       </mesh>
       <mesh position-y={3.1}>
-        <boxGeometry args={[2.35, 0.25, 7.9]} />
-        <meshStandardMaterial color={PALETTE.busBodyDark} roughness={0.6} metalness={0.2} />
+        <boxGeometry args={[2.35, 0.24, 7.9]} />
+        <meshStandardMaterial color={PALETTE.busBody} roughness={0.42} metalness={0.28} />
       </mesh>
 
       <mesh position={[0, 2.48, 0.1]}>
         <boxGeometry args={[2.6, 0.8, 5.9]} />
         <meshStandardMaterial
           color={PALETTE.busGlass}
-          roughness={0.15}
-          metalness={0.45}
-          emissive="#0a1a26"
-          emissiveIntensity={0.5}
+          roughness={0.16}
+          metalness={0.4}
+          emissive={PALETTE.busInterior}
+          emissiveIntensity={0.55}
         />
       </mesh>
       <mesh position={[0, 2.38, 4.17]}>
         <boxGeometry args={[2.25, 0.95, 0.1]} />
-        <meshStandardMaterial color={PALETTE.busGlass} roughness={0.12} metalness={0.5} />
+        <meshStandardMaterial color={PALETTE.busGlass} roughness={0.14} metalness={0.46} />
       </mesh>
       <mesh position={[0, 2.42, -4.17]}>
         <boxGeometry args={[2.15, 0.78, 0.1]} />
-        <meshStandardMaterial color={PALETTE.busGlass} roughness={0.16} metalness={0.45} />
+        <meshStandardMaterial
+          color={PALETTE.busGlass}
+          roughness={0.16}
+          metalness={0.42}
+          emissive={PALETTE.busInterior}
+          emissiveIntensity={0.3}
+        />
       </mesh>
 
-      <mesh position={[0, 1.5, 4.2]}>
-        <boxGeometry args={[1.7, 0.3, 0.06]} />
-        <meshBasicMaterial color={PALETTE.route} toneMapped={false} />
+      <mesh position={[0, 1.52, 4.2]}>
+        <boxGeometry args={[1.7, 0.26, 0.06]} />
+        <meshStandardMaterial color={PALETTE.busBody} roughness={0.4} metalness={0.3} />
       </mesh>
 
       <mesh position={[0, 0.78, 4.02]}>
         <boxGeometry args={[2.6, 0.32, 0.28]} />
-        <meshStandardMaterial color={PALETTE.busBodyDark} roughness={0.7} />
+        <meshStandardMaterial color={PALETTE.busBodyDark} roughness={0.72} metalness={0.12} />
       </mesh>
 
       {[-0.85, 0.85].map((x) => (
         <mesh key={`head-${x}`} position={[x, 1.42, 4.2]}>
           <sphereGeometry args={[0.2, 10, 8]} />
-          <meshBasicMaterial color={PALETTE.busHeadlight} toneMapped={false} />
+          <meshStandardMaterial
+            color={PALETTE.busHeadlight}
+            emissive={PALETTE.busHeadlight}
+            emissiveIntensity={1.6}
+            roughness={0.3}
+          />
         </mesh>
       ))}
 
       {[-0.85, 0.85].map((x) => (
-        <mesh
-          key={`beam-${x}`}
-          position={[x, 1.38, 8.2]}
-          rotation-x={-Math.PI / 2}
-        >
+        <mesh key={`beam-${x}`} position={[x, 1.38, 8.2]} rotation-x={-Math.PI / 2}>
           <coneGeometry args={[1.5, 8, 12, 1, true]} />
           <meshBasicMaterial
             color={PALETTE.busHeadlight}
             transparent
-            opacity={0.09}
-            blending={THREE.AdditiveBlending}
+            opacity={0.05}
             depthWrite={false}
             side={THREE.DoubleSide}
             toneMapped={false}
@@ -159,14 +173,19 @@ export function ShuttleBus({ bus, anchor, reducedMotion }: ShuttleBusProps) {
       {[-0.95, 0.95].map((x) => (
         <mesh key={`tail-${x}`} position={[x, 1.48, -4.2]}>
           <boxGeometry args={[0.42, 0.22, 0.06]} />
-          <meshBasicMaterial color={PALETTE.busTaillight} toneMapped={false} />
+          <meshStandardMaterial
+            color={PALETTE.busTaillight}
+            emissive={PALETTE.busTaillight}
+            emissiveIntensity={0.9}
+            roughness={0.4}
+          />
         </mesh>
       ))}
 
       {[-1.285, 1.285].map((x) => (
-        <mesh key={`stripe-${x}`} position={[x, 1.55, 0]}>
-          <boxGeometry args={[0.04, 0.12, 7.4]} />
-          <meshBasicMaterial color={PALETTE.route} toneMapped={false} />
+        <mesh key={`stripe-${x}`} position={[x, 1.62, 0]}>
+          <boxGeometry args={[0.04, 0.14, 7.4]} />
+          <meshStandardMaterial color={PALETTE.busBodyDark} roughness={0.55} metalness={0.3} />
         </mesh>
       ))}
 
@@ -189,13 +208,13 @@ export function ShuttleBus({ bus, anchor, reducedMotion }: ShuttleBusProps) {
       ))}
 
       <mesh position={[0, 3.32, 1.25]}>
-        <sphereGeometry args={[0.2, 10, 8]} />
-        <meshBasicMaterial
+        <sphereGeometry args={[0.22, 10, 8]} />
+        <meshStandardMaterial
           ref={beaconMaterial}
           color={PALETTE.busBeacon}
-          transparent
-          opacity={0.9}
-          toneMapped={false}
+          emissive={PALETTE.busBeacon}
+          emissiveIntensity={1}
+          roughness={0.35}
         />
       </mesh>
       <mesh position={[0, 3.24, 1.25]}>
@@ -203,76 +222,20 @@ export function ShuttleBus({ bus, anchor, reducedMotion }: ShuttleBusProps) {
         <meshStandardMaterial color="#20262e" roughness={0.7} />
       </mesh>
 
-      <mesh ref={halo} rotation-x={-Math.PI / 2} position-y={0.4}>
-        <ringGeometry args={[8.5, 9.9, 64]} />
+      <mesh ref={halo} rotation-x={-Math.PI / 2} position-y={0.16}>
+        <ringGeometry args={[8.6, 9.6, 48]} />
         <meshBasicMaterial
           ref={haloMaterial}
           color={PALETTE.route}
           transparent
-          opacity={0.3}
+          opacity={0.12}
           side={THREE.DoubleSide}
-          blending={THREE.AdditiveBlending}
           depthWrite={false}
           toneMapped={false}
         />
       </mesh>
 
-      <mesh position-y={18}>
-        <cylinderGeometry args={[0.42, 1, 36, 6, 1, true]} />
-        <meshBasicMaterial
-          ref={beamMaterial}
-          color={PALETTE.route}
-          transparent
-          opacity={0.24}
-          side={THREE.DoubleSide}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
-
-      {bus.phase !== 'off' && !atStop ? (
-        <Html position={[0, 72, 0]} center zIndexRange={[9, 0]} pointerEvents="none">
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              padding: '3px 8px',
-              borderRadius: 999,
-              border: '1px solid rgba(255,190,98,0.85)',
-              background: 'rgba(34,22,6,0.88)',
-              boxShadow: '0 0 16px rgba(255,178,80,0.35)',
-              color: '#ffe0a6',
-              font: '700 10px/1.2 var(--font-sans, ui-sans-serif, system-ui, sans-serif)',
-              letterSpacing: '0.08em',
-              whiteSpace: 'nowrap',
-              pointerEvents: 'none',
-              userSelect: 'none',
-            }}
-          >
-            <span
-              aria-hidden
-              style={{
-                width: 5,
-                height: 5,
-                borderRadius: '50%',
-                background: PALETTE.busBeacon,
-                boxShadow: `0 0 8px ${PALETTE.busBeacon}`,
-              }}
-            />
-            SHUTTLE
-          </div>
-        </Html>
-      ) : null}
-
-      <pointLight
-        position={[0, 1.3, 6.5]}
-        color={PALETTE.busHeadlight}
-        intensity={90}
-        distance={48}
-        decay={2}
-      />
+      <pointLight position={[0, 1.3, 6.5]} color={PALETTE.busHeadlight} intensity={40} distance={34} decay={2} />
     </group>
   );
 }

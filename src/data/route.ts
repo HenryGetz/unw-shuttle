@@ -68,8 +68,8 @@ export const STOPS: Record<StopId, StopInfo> = {
   }),
   'brc-totino': stop('brc-totino', {
     id: 'brc-totino',
-    name: 'Berntsen / Totino',
-    shortName: 'BRC / Totino',
+    name: 'The Billy · Berntsen / Totino',
+    shortName: 'The Billy',
     subtitle: 'Berntsen Library · Totino Fine Arts',
     primary: true,
   }),
@@ -80,3 +80,14 @@ export const STOPS: Record<StopId, StopInfo> = {
     subtitle: 'Request only · call 651-631-5310',
   }),
 };
+
+/**
+ * Graham Commons and Berntsen / Totino share a nickname because only one is
+ * the Billy stop on a given day. Resolve it instead of printing "The Billy"
+ * twice in pickers and map labels.
+ */
+export function stopShortLabel(id: StopId, billyStop: StopId): string {
+  if (id === 'graham') return billyStop === 'graham' ? 'The Billy' : 'Graham';
+  if (id === 'brc-totino') return billyStop === 'brc-totino' ? 'The Billy' : 'BRC / Totino';
+  return STOPS[id].shortName;
+}

@@ -1,0 +1,527 @@
+/* Timetable: stop-filtered mobile trip list plus a full-width scrollable grid. */
+
+.sched-board__head {
+  gap: 10px 16px;
+}
+
+.sched-board__date {
+  margin-top: 2px;
+  color: var(--text-4);
+  font-family: var(--font-numeric);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.sched-board__tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sched-toggle .segmented__button {
+  font-size: 0.74rem;
+}
+
+.sched-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-deep) 40%, transparent);
+  padding: 9px 12px;
+}
+
+.sched-summary__badge {
+  color: var(--text-2);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.sched-summary__badge span {
+  color: var(--text-4);
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+.sched-summary__next {
+  color: var(--text-3);
+  font-size: 0.78rem;
+}
+
+.sched-summary__next strong {
+  color: var(--gold);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* Stop filter rail -------------------------------------------------------- */
+
+.sched-stops {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin: 12px -4px 0;
+  overflow-x: auto;
+  padding: 4px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.sched-stops::-webkit-scrollbar {
+  display: none;
+}
+
+.sched-stop {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--pill);
+  background: var(--surface-2);
+  padding: 0 14px;
+  color: var(--text-2);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+
+.sched-stop:hover {
+  border-color: color-mix(in srgb, var(--gold) 40%, transparent);
+  color: var(--text);
+}
+
+.sched-stop[aria-pressed='true'] {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--gold-ink);
+}
+
+/* Trip list --------------------------------------------------------------- */
+
+.trip-list__count {
+  margin-top: 12px;
+  color: var(--text-4);
+  font-size: 0.74rem;
+}
+
+.trip-list-wrap .trip-list {
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.trip-list {
+  list-style: none;
+}
+
+.trip-row {
+  border-bottom: 1px solid var(--line);
+}
+
+.trip-row > summary {
+  display: grid;
+  min-height: 56px;
+  grid-template-columns: 78px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 6px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.trip-row > summary::-webkit-details-marker {
+  display: none;
+}
+
+.trip-row__time {
+  color: var(--text);
+  font-family: var(--font-numeric);
+  font-size: 0.94rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.trip-row__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trip-row__title {
+  color: var(--text-2);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.trip-row__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.trip-row__chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--text-4);
+  transition: transform 0.18s var(--ease-out);
+}
+
+.trip-row[open] .trip-row__chevron {
+  transform: rotate(180deg);
+}
+
+.trip-row.is-past > summary {
+  opacity: 0.52;
+}
+
+.trip-row.is-next {
+  background: linear-gradient(90deg, var(--gold-soft), transparent 72%);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.trip-row.is-next .trip-row__time {
+  color: var(--gold);
+}
+
+.trip-tag {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  border-radius: var(--pill);
+  padding: 1px 8px;
+  font-family: var(--font-body);
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.trip-tag--via {
+  background: var(--gold-soft);
+  color: var(--gold);
+}
+
+.trip-tag--bypass {
+  background: color-mix(in srgb, var(--lavender) 8%, transparent);
+  color: var(--text-2);
+}
+
+.trip-tag--req {
+  background: var(--lavender-soft);
+  color: var(--lavender);
+}
+
+.trip-tag--drop {
+  background: color-mix(in srgb, var(--lavender) 8%, transparent);
+  color: var(--text-3);
+}
+
+.trip-tag--next {
+  background: var(--gold);
+  color: var(--gold-ink);
+}
+
+.trip-row__detail {
+  padding: 2px 6px 14px 88px;
+}
+
+.trip-stops {
+  list-style: none;
+}
+
+.trip-stops li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px dotted var(--line);
+  padding: 4px 0;
+  color: var(--text-3);
+  font-size: 0.76rem;
+}
+
+.trip-stops li:last-child {
+  border-bottom: 0;
+}
+
+.trip-stops__name {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.trip-stops__time {
+  flex: none;
+  color: var(--text-2);
+  white-space: nowrap;
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+}
+
+.trip-note {
+  margin-top: 6px;
+  color: var(--text-4);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.trip-list__empty {
+  margin-top: 16px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-deep) 36%, transparent);
+  padding: 14px;
+  color: var(--text-2);
+  font-size: 0.86rem;
+}
+
+.sched-call {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 14px;
+  border: 1px solid color-mix(in srgb, var(--gold) 38%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--gold-soft);
+  padding: 11px 14px;
+  color: var(--text);
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.sched-call:hover {
+  border-color: var(--gold);
+  color: var(--text);
+}
+
+.sched-call__label {
+  display: block;
+  color: var(--text-3);
+  font-size: 0.7rem;
+}
+
+.sched-call__number {
+  color: var(--gold);
+  font-family: var(--font-numeric);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* Full grid --------------------------------------------------------------- */
+
+.sched-grid {
+  position: relative;
+  margin-top: 12px;
+}
+
+.sched-grid__scroll {
+  position: relative;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  scrollbar-color: var(--line-strong) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sched-grid__table {
+  width: 100%;
+  min-width: max-content;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.8rem;
+}
+
+.sched-grid__table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--surface-3);
+  padding: 9px 12px;
+  color: var(--text-3);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-align: left;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.sched-grid__table tbody th,
+.sched-grid__table tbody td {
+  min-height: 40px;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 12px;
+  color: var(--text-2);
+  font-size: 0.79rem;
+  text-align: left;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+
+.sched-grid__table tbody tr:last-child th,
+.sched-grid__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.sched-grid__table tbody tr:hover {
+  background: color-mix(in srgb, var(--lavender) 5%, transparent);
+}
+
+.sched-grid__table .trip-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 62px;
+  background: var(--surface-2);
+}
+
+.sched-grid__table thead .trip-col {
+  z-index: 3;
+  background: var(--surface-3);
+}
+
+.sched-grid__table tbody tr:hover .trip-col {
+  background: var(--surface-3);
+}
+
+.sched-grid__table .trip-number {
+  color: var(--text-2);
+  font-family: var(--font-numeric);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.sched-grid__table .route-mark {
+  width: 6px;
+  height: 6px;
+}
+
+.sched-grid__table .time {
+  color: var(--text-2);
+  font-size: 0.79rem;
+}
+
+.sched-grid__table .cell-ram .time {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.sched-grid__table tbody tr.is-next {
+  background: color-mix(in srgb, var(--gold) 7%, transparent);
+}
+
+.sched-grid__table tbody tr.is-next th,
+.sched-grid__table tbody tr.is-next td {
+  border-bottom-color: color-mix(in srgb, var(--gold) 18%, transparent);
+}
+
+.sched-grid__table tbody tr.is-next .trip-col {
+  background: color-mix(in srgb, var(--gold) 12%, var(--surface-2));
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.sched-grid__fade {
+  display: none;
+}
+
+.sched-grid .table-notes {
+  margin-top: 8px;
+}
+
+@media (max-width: 899px) {
+  .sched-grid__fade {
+    position: absolute;
+    top: 1px;
+    bottom: 1px;
+    z-index: 4;
+    display: block;
+    width: 26px;
+    pointer-events: none;
+  }
+
+  .sched-grid__fade--start {
+    left: 1px;
+    width: 10px;
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
+    background: linear-gradient(to right, var(--surface), transparent);
+  }
+
+  .sched-grid__fade--end {
+    right: 1px;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    background: linear-gradient(to right, transparent, var(--surface));
+  }
+}
+
+/* All schedules tabs under the new shell */
+
+.all-schedules .tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.all-schedules .tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.all-schedules .tab {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+  .all-schedules__summary {
+    padding: 16px var(--gutter) 16px;
+  }
+
+  .all-schedules__hint {
+    display: none;
+  }
+
+  .all-schedules .tabs {
+    padding: 12px var(--gutter);
+  }
+
+  .tab-panel {
+    padding: 0 var(--gutter) 18px;
+  }
+
+  .trip-row > summary {
+    grid-template-columns: 74px minmax(0, 1fr) 16px;
+    gap: 8px;
+  }
+
+  .trip-row__detail {
+    padding-left: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trip-row__chevron {
+    transition: none;
+  }
+}

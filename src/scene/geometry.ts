@@ -3,7 +3,13 @@ import { CAMPUS } from '../data/campus';
 import { ROUTE_BYPASS, ROUTE_VIA, STOPS, STOP_ORDER } from '../data/route';
 import type { CampusBuilding, RouteVariant } from '../data/types';
 import { pointAtDistance } from '../lib/schedule';
-import { BUILDING_COLORS, PALETTE, type BuildingKind } from './palette';
+import {
+  BUILDING_COLORS,
+  BUILDING_OUTLINE,
+  BUILDING_ROOFS,
+  type BuildingKind,
+} from './palette';
+import { BUILDING_CATEGORY } from './places';
 
 const BUILDING_KINDS: BuildingKind[] = ['context', 'residential', 'academic', 'athletic', 'landmark'];
 
@@ -86,12 +92,14 @@ function pushAttribute(target: number[], source: THREE.BufferAttribute | THREE.I
 export function buildBuildingGeometries(): BuildingGeometrySet {
   const buckets = new Map<BuildingKind, ShapeBucket>();
   const outlinePositions: number[] = [];
+  const outlineColors: number[] = [];
 
   CAMPUS.buildings.forEach((building: CampusBuilding, buildingIndex: number) => {
     if (building.poly.length < 3 || polygonArea(building.poly) < 1) return;
+    const kind = BUILDING_CATEGORY.get(buildingIndex) ?? building.kind;
 
     const geometry = new THREE.ExtrudeGeometry(polygonShape(building.poly), {
-      depth: Math.max(1, building.height),
+      depth: Math.max(18, building.height * 2.8),
       bevelEnabled: false,
       curveSegments: 1,
       steps: 1,
@@ -105,28 +113,34 @@ export function buildBuildingGeometries(): BuildingGeometrySet {
       return;
     }
 
-    let bucket = buckets.get(building.kind);
+    let bucket = buckets.get(kind);
     if (!bucket) {
       bucket = { positions: [], normals: [], colors: [] };
-      buckets.set(building.kind, bucket);
+      buckets.set(kind, bucket);
     }
 
     pushAttribute(bucket.positions, position);
     pushAttribute(bucket.normals, normal);
 
-    const jitter = 0.84 + hashUnit(buildingIndex + 1) * 0.3;
-    const color = new THREE.Color(BUILDING_COLORS[building.kind]).multiplyScalar(jitter);
-    const roof = color.clone().lerp(new THREE.Color('#c3d6e6'), 0.34);
+    const jitter = 0.86 + hashUnit(buildingIndex + 1) * 0.26;
+    const color = new THREE.Color(BUILDING_COLORS[kind]).multiplyScalar(jitter);
+    const roof = new THREE.Color(BUILDING_ROOFS[kind]).multiplyScalar(jitter);
     const vertexCount = position.count;
     for (let vertex = 0; vertex < vertexCount; vertex += 1) {
       const face = normal.getY(vertex) > 0.5 ? roof : color;
       bucket.colors.push(face.r, face.g, face.b);
     }
 
-    if (building.name) {
+    if (building.name || BUILDING_CATEGORY.has(buildingIndex)) {
       const edges = new THREE.EdgesGeometry(geometry, 24);
       const edgePosition = edges.getAttribute('position');
-      if (edgePosition) pushAttribute(outlinePositions, edgePosition);
+      if (edgePosition) {
+        pushAttribute(outlinePositions, edgePosition);
+        const outline = new THREE.Color(BUILDING_OUTLINE[kind]);
+        for (let vertex = 0; vertex < edgePosition.count; vertex += 1) {
+          outlineColors.push(outline.r, outline.g, outline.b);
+        }
+      }
       edges.dispose();
     }
 
@@ -149,6 +163,7 @@ export function buildBuildingGeometries(): BuildingGeometrySet {
   if (outlinePositions.length > 0) {
     outlines = new THREE.BufferGeometry();
     outlines.setAttribute('position', new THREE.Float32BufferAttribute(outlinePositions, 3));
+    outlines.setAttribute('color', new THREE.Float32BufferAttribute(outlineColors, 3));
     outlines.computeBoundingSphere();
   }
 
@@ -207,39 +222,40 @@ export function buildWaterEdgeGeometry(): THREE.BufferGeometry {
   return geometry;
 }
 
-function roadColor(kind: string): THREE.Color {
-  switch (kind) {
-    case 'trunk':
-      return new THREE.Color(PALETTE.roadTrunk);
-    case 'tertiary':
-      return new THREE.Color(PALETTE.roadTertiary);
-    case 'residential':
-      return new THREE.Color(PALETTE.roadResidential);
-    default:
-      return new THREE.Color(PALETTE.roadService);
-  }
+export type RoadLineKind = 'trunk' | 'tertiary' | 'residential' | 'service';
+
+export interface RoadLineSet {
+  kind: RoadLineKind;
+  points: [number, number, number][];
 }
 
-export function buildRoadGeometry(): THREE.BufferGeometry {
-  const positions: number[] = [];
-  const colors: number[] = [];
-  const y = 0.4;
+function roadLineKind(kind: string): RoadLineKind {
+  if (kind === 'trunk' || kind === 'tertiary' || kind === 'residential') return kind;
+  return 'service';
+}
+
+/**
+ * Merged segment pairs, one Line2 draw call per road class. Lavender-grey
+ * strokes read as roads without the glowing-wire look of the old grid scene.
+ */
+export function buildRoadLineSets(): RoadLineSet[] {
+  const kinds: RoadLineKind[] = ['service', 'residential', 'tertiary', 'trunk'];
+  const buckets = new Map<RoadLineKind, [number, number, number][]>(
+    kinds.map((kind) => [kind, []]),
+  );
+  const y = 0.42;
 
   for (const road of CAMPUS.roads) {
-    const color = roadColor(road.kind);
+    const bucket = buckets.get(roadLineKind(road.kind));
+    if (!bucket) continue;
     for (let index = 1; index < road.poly.length; index += 1) {
-      const [x1, z1] = road.poly[index - 1];
-      const [x2, z2] = road.poly[index];
-      positions.push(x1, y, z1, x2, y, z2);
-      colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
+      const [ax, az] = road.poly[index - 1];
+      const [bx, bz] = road.poly[index];
+      bucket.push([ax, y, az], [bx, y, bz]);
     }
   }
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  geometry.computeBoundingSphere();
-  return geometry;
+  return kinds.map((kind) => ({ kind, points: buckets.get(kind) ?? [] }));
 }
 
 function toRoutePoints(points: [number, number][]): [number, number, number][] {
@@ -258,6 +274,27 @@ export const CAMPUS_BOUNDARY: [number, number, number][] = first
       [first[0], 0.9, first[1]],
     ]
   : [];
+
+function boundsOf(points: [number, number][]): { center: [number, number, number]; radius: number } {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const [x, z] of points) {
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minZ = Math.min(minZ, z);
+    maxZ = Math.max(maxZ, z);
+  }
+  const cx = (minX + maxX) / 2;
+  const cz = (minZ + maxZ) / 2;
+  let radius = 0;
+  for (const [x, z] of points) radius = Math.max(radius, Math.hypot(x - cx, z - cz));
+  return { center: [cx, 0, cz], radius };
+}
+
+export const CAMPUS_VIEW = boundsOf(CAMPUS.campus);
+export const ROUTE_VIEW = boundsOf([...ROUTE_VIA.points, ...ROUTE_BYPASS.points]);
 
 export function routeDirections(route: RouteVariant, spacing = 165): RouteDirection[] {
   const directions: RouteDirection[] = [];

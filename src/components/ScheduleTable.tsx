@@ -1,8 +1,9 @@
 import type { ServiceDay, ServiceKind, StopId, Trip } from '../data/types';
 import { routeForTrip } from '../lib/schedule';
 import { formatTime } from '../lib/time';
+import '../styles/schedule.css';
 
-interface ScheduleColumn {
+export interface ScheduleColumn {
   id: StopId;
   label: string;
 }
@@ -12,7 +13,7 @@ const REGULAR_COLUMNS: ScheduleColumn[] = [
   { id: 'akenson', label: 'Akenson' },
   { id: 'rosedale', label: 'Rosedale' },
   { id: 'lower-riley', label: 'Lower Riley' },
-  { id: 'brc-totino', label: 'Billy (BRC)' },
+  { id: 'brc-totino', label: 'BRC / Totino' },
   { id: 'erickson', label: 'Ericksen' },
 ];
 
@@ -24,6 +25,10 @@ const FINALS_COLUMNS: ScheduleColumn[] = [
   { id: 'brc-totino', label: 'BRC / Totino' },
   { id: 'erickson', label: 'Ericksen' },
 ];
+
+export function columnsForService(kind: ServiceKind): ScheduleColumn[] {
+  return kind === 'finals' ? FINALS_COLUMNS : REGULAR_COLUMNS;
+}
 
 interface ScheduleTableProps {
   service: ServiceDay;
@@ -74,15 +79,16 @@ function renderCell(trip: Trip, stopId: StopId, kind: ServiceKind) {
 }
 
 export function ScheduleTable({ service, caption, highlightTripId = null }: ScheduleTableProps) {
-  const columns = service.kind === 'finals' ? FINALS_COLUMNS : REGULAR_COLUMNS;
+  const columns = columnsForService(service.kind);
   const notes = service.trips.flatMap((trip, index) =>
     trip.note ? [{ id: trip.id, text: `Trip ${index + 1}: ${trip.note}` }] : [],
   );
 
   return (
-    <div className="schedule-table">
-      <div className="table-wrap">
-        <table>
+    <div className="schedule-table sched-grid">
+      <p className="table-hint">Swipe the grid sideways for every stop.</p>
+      <div className="sched-grid__scroll table-wrap">
+        <table className="sched-grid__table">
           <caption className="sr-only">{caption}</caption>
           <thead>
             <tr>
@@ -125,6 +131,8 @@ export function ScheduleTable({ service, caption, highlightTripId = null }: Sche
           </tbody>
         </table>
       </div>
+      <span className="sched-grid__fade sched-grid__fade--start" aria-hidden="true" />
+      <span className="sched-grid__fade sched-grid__fade--end" aria-hidden="true" />
       {notes.length > 0 && (
         <ul className="table-notes">
           {notes.map((note) => (

@@ -4,19 +4,24 @@ import * as THREE from 'three';
 import {
   buildBuildingGeometries,
   buildCampusFillGeometry,
-  buildRoadGeometry,
+  buildRoadLineSets,
   buildTreePlacements,
   buildWaterEdgeGeometry,
   buildWaterGeometries,
   CAMPUS_BOUNDARY,
+  type RoadLineKind,
   type TreePlacement,
 } from './geometry';
 import {
   BUILDING_EMISSIVE,
+  CONIFER_CAP,
   PALETTE,
   TREE_SHADES,
   type BuildingKind,
 } from './palette';
+import { CATEGORY_ACCENT, CATEGORY_PLINTH } from './palette';
+import { SCENE_PLINTHS } from './places';
+import type { OfficialCategory } from '../data/officialMap';
 
 function Conifers({ placements }: { placements: TreePlacement[] }) {
   const trunks = useRef<THREE.InstancedMesh>(null);
@@ -65,25 +70,25 @@ function Conifers({ placements }: { placements: TreePlacement[] }) {
   return (
     <group>
       <instancedMesh ref={trunks} args={[geometries.trunk, undefined, placements.length]}>
-        <meshStandardMaterial color="#2a2019" roughness={0.95} metalness={0} flatShading />
+        <meshStandardMaterial color={PALETTE.treeTrunk} roughness={0.96} metalness={0} flatShading />
       </instancedMesh>
       <instancedMesh ref={canopies} args={[geometries.canopy, undefined, placements.length]}>
         <meshStandardMaterial
           color="#ffffff"
-          roughness={0.92}
+          roughness={0.94}
           metalness={0}
-          emissive="#07140f"
-          emissiveIntensity={0.6}
+          emissive="#050a07"
+          emissiveIntensity={0.22}
           flatShading
         />
       </instancedMesh>
       <instancedMesh ref={caps} args={[geometries.cap, undefined, placements.length]}>
         <meshStandardMaterial
-          color="#d7e5f3"
-          roughness={0.86}
+          color={CONIFER_CAP}
+          roughness={0.92}
           metalness={0}
-          emissive="#1a2735"
-          emissiveIntensity={0.25}
+          emissive="#0a120c"
+          emissiveIntensity={0.18}
           flatShading
         />
       </instancedMesh>
@@ -140,15 +145,15 @@ function BareTrees({ placements }: { placements: TreePlacement[] }) {
   return (
     <group>
       <instancedMesh ref={trunks} args={[geometries.trunk, undefined, placements.length]}>
-        <meshStandardMaterial color="#332820" roughness={0.95} metalness={0} flatShading />
+        <meshStandardMaterial color={PALETTE.treeTrunk} roughness={0.96} metalness={0} flatShading />
       </instancedMesh>
       <instancedMesh ref={branches} args={[geometries.branch, undefined, branchCount]}>
         <meshStandardMaterial
-          color="#63717e"
-          roughness={0.88}
+          color={PALETTE.treeBranch}
+          roughness={0.92}
           metalness={0}
-          emissive="#0d151d"
-          emissiveIntensity={0.35}
+          emissive="#08060c"
+          emissiveIntensity={0.2}
           flatShading
         />
       </instancedMesh>
@@ -176,24 +181,115 @@ function Buildings() {
           <meshStandardMaterial
             vertexColors
             flatShading
-            roughness={kind === 'landmark' ? 0.72 : 0.9}
-            metalness={0.08}
+            roughness={kind === 'landmark' ? 0.82 : 0.94}
+            metalness={0.04}
             emissive={BUILDING_EMISSIVE[kind]}
-            emissiveIntensity={kind === 'landmark' ? 0.55 : 0.18}
+            emissiveIntensity={kind === 'landmark' ? 0.3 : 0.12}
           />
         </mesh>
       ))}
       {buildings.outlines ? (
         <lineSegments geometry={buildings.outlines} frustumCulled={false}>
           <lineBasicMaterial
-            color="#87a6c2"
+            vertexColors
             transparent
-            opacity={0.3}
+            opacity={0.55}
             depthWrite={false}
             toneMapped={false}
           />
         </lineSegments>
       ) : null}
+    </group>
+  );
+}
+
+const PLINTH_CATEGORIES: OfficialCategory[] = ['landmark', 'academic', 'residential', 'athletic', 'context'];
+
+function Plinths() {
+  const groups = useMemo(
+    () =>
+      PLINTH_CATEGORIES.map((category) => ({
+        category,
+        placements: SCENE_PLINTHS.filter((plinth) => plinth.category === category),
+      })).filter((group) => group.placements.length > 0),
+    [],
+  );
+  const pads = useRef(new Map<OfficialCategory, THREE.InstancedMesh>());
+  const posts = useRef(new Map<OfficialCategory, THREE.InstancedMesh>());
+
+  useLayoutEffect(() => {
+    const helper = new THREE.Object3D();
+
+    for (const group of groups) {
+      const pad = pads.current.get(group.category);
+      const post = posts.current.get(group.category);
+      const padColor = new THREE.Color(CATEGORY_PLINTH[group.category]);
+      const postColor = new THREE.Color(CATEGORY_ACCENT[group.category]);
+
+      group.placements.forEach((plinth, index) => {
+        helper.position.set(plinth.x, 0, plinth.z);
+        helper.rotation.set(0, 0, 0);
+        helper.scale.set(plinth.radius, 1.1, plinth.radius);
+        helper.updateMatrix();
+        pad?.setMatrixAt(index, helper.matrix);
+        pad?.setColorAt(index, padColor);
+
+        helper.position.set(plinth.x, 1.8, plinth.z);
+        helper.scale.set(1, 1, 1);
+        helper.updateMatrix();
+        post?.setMatrixAt(index, helper.matrix);
+        post?.setColorAt(index, postColor);
+      });
+
+      for (const mesh of [pad, post]) {
+        if (!mesh) continue;
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+        mesh.computeBoundingSphere();
+      }
+    }
+  }, [groups]);
+
+  return (
+    <group>
+      {groups.map((group) => (
+        <group key={group.category}>
+          <instancedMesh
+            ref={(mesh) => {
+              if (mesh) pads.current.set(group.category, mesh);
+              return () => pads.current.delete(group.category);
+            }}
+            args={[undefined, undefined, group.placements.length]}
+          >
+            <cylinderGeometry args={[1, 1.06, 1, 10]} />
+            <meshStandardMaterial
+              color="#ffffff"
+              roughness={0.95}
+              metalness={0.02}
+              emissive={CATEGORY_PLINTH[group.category]}
+              emissiveIntensity={0.16}
+              flatShading
+            />
+          </instancedMesh>
+          <instancedMesh
+            ref={(mesh) => {
+              if (mesh) posts.current.set(group.category, mesh);
+              return () => posts.current.delete(group.category);
+            }}
+            args={[undefined, undefined, group.placements.length]}
+          >
+            <cylinderGeometry args={[1.3, 1.6, 3.6, 8]} />
+            <meshStandardMaterial
+              color="#ffffff"
+              roughness={0.7}
+              metalness={0.1}
+              emissive={CATEGORY_ACCENT[group.category]}
+              emissiveIntensity={0.12}
+              flatShading
+            />
+          </instancedMesh>
+        </group>
+      ))}
     </group>
   );
 }
@@ -213,10 +309,10 @@ function Water() {
         >
           <meshStandardMaterial
             color={PALETTE.water}
-            roughness={0.2}
-            metalness={0.72}
-            emissive="#0a2740"
-            emissiveIntensity={0.9}
+            roughness={0.22}
+            metalness={0.58}
+            emissive="#0b1430"
+            emissiveIntensity={0.7}
           />
         </mesh>
       ))}
@@ -224,7 +320,7 @@ function Water() {
         <lineBasicMaterial
           color={PALETTE.waterEdge}
           transparent
-          opacity={0.55}
+          opacity={0.45}
           depthWrite={false}
         />
       </lineSegments>
@@ -232,60 +328,69 @@ function Water() {
   );
 }
 
+const ROAD_STYLE: Record<RoadLineKind, { color: string; width: number; opacity: number }> = {
+  trunk: { color: PALETTE.roadTrunk, width: 3.2, opacity: 0.42 },
+  tertiary: { color: PALETTE.roadTertiary, width: 2.2, opacity: 0.37 },
+  residential: { color: PALETTE.roadResidential, width: 1.5, opacity: 0.38 },
+  service: { color: PALETTE.roadService, width: 1, opacity: 0.3 },
+};
+
+function Roads() {
+  const sets = useMemo(() => buildRoadLineSets(), []);
+
+  return (
+    <group>
+      {sets.map((set) => {
+        if (set.points.length < 2) return null;
+        const style = ROAD_STYLE[set.kind];
+        return (
+          <Line
+            key={set.kind}
+            points={set.points}
+            segments
+            color={style.color}
+            lineWidth={style.width}
+            transparent
+            opacity={style.opacity}
+            depthWrite={false}
+          />
+        );
+      })}
+    </group>
+  );
+}
+
 export function CampusTerrain() {
   const campusFill = useMemo(() => buildCampusFillGeometry(), []);
-  const roads = useMemo(() => buildRoadGeometry(), []);
-  const grid = useRef<THREE.GridHelper>(null);
-
-  useLayoutEffect(() => {
-    const material = grid.current?.material;
-    if (!material || Array.isArray(material)) return;
-    material.transparent = true;
-    material.opacity = 0.55;
-    material.depthWrite = false;
-  }, []);
 
   return (
     <group>
       <mesh rotation-x={-Math.PI / 2} position-y={-0.04}>
         <planeGeometry args={[16000, 16000]} />
-        <meshStandardMaterial color={PALETTE.ground} roughness={0.98} metalness={0.02} />
+        <meshStandardMaterial color={PALETTE.ground} roughness={1} metalness={0} />
       </mesh>
 
-      <gridHelper
-        ref={grid}
-        args={[6000, 120, PALETTE.gridCenter, PALETTE.grid]}
-        position={[-120, 0.08, 200]}
-      />
-
       <mesh geometry={campusFill} position-y={0.05} renderOrder={0}>
-        <meshStandardMaterial color={PALETTE.campus} roughness={0.95} metalness={0.04} />
+        <meshStandardMaterial color={PALETTE.campus} roughness={0.98} metalness={0.02} />
       </mesh>
 
       <Line
         points={CAMPUS_BOUNDARY}
         color={PALETTE.boundary}
-        lineWidth={2}
+        lineWidth={1.4}
         dashed
-        dashSize={42}
-        gapSize={26}
+        dashSize={34}
+        gapSize={30}
         transparent
-        opacity={0.8}
+        opacity={0.34}
         depthWrite={false}
       />
 
       <Water />
-
-      <lineSegments geometry={roads} frustumCulled={false}>
-        <lineBasicMaterial
-          vertexColors
-          transparent
-          opacity={0.82}
-          depthWrite={false}
-        />
-      </lineSegments>
+      <Roads />
 
       <Buildings />
+      <Plinths />
       <Trees />
     </group>
   );
