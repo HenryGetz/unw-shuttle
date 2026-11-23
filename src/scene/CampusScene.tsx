@@ -3,9 +3,10 @@ import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import type { StopId } from '../data/types';
 import { CameraRig } from './CameraRig';
 import { CampusTerrain } from './CampusTerrain';
-import type { CampusSceneProps } from './contracts';
+import { busFocusStop, type CampusSceneProps } from './contracts';
 import { RouteOverlay } from './RouteOverlay';
 import type { SceneLabelHandle } from './SceneLabels';
 import { SceneLabels } from './SceneLabels';
@@ -130,8 +131,10 @@ function SceneFallback() {
 
 export function CampusScene({
   bus,
+  billyStop,
   selectedStop,
   pinnedStops,
+  labelsVisible,
   camera,
   resetToken,
   onSelectStop,
@@ -141,6 +144,8 @@ export function CampusScene({
   const reducedMotion = usePrefersReducedMotion();
   const anchor = useRef<BusAnchor>({ x: bus.position.x, z: bus.position.z }).current;
   const overlay = useRef<SceneLabelHandle | null>(null);
+  const [hoveredStop, setHoveredStop] = useState<StopId | null>(null);
+  const focusStop = busFocusStop(bus);
 
   if (!webgl) return <SceneFallback />;
 
@@ -175,7 +180,9 @@ export function CampusScene({
         <StopMarkers
           selectedStop={selectedStop}
           pinnedStops={pinnedStops}
+          hoveredStop={hoveredStop}
           onSelectStop={onSelectStop}
+          onHoverStop={setHoveredStop}
         />
         <ShuttleBus bus={bus} anchor={anchor} reducedMotion={reducedMotion} />
         <LabelProjector anchor={anchor} busVisible={bus.phase !== 'off'} overlay={overlay} />
@@ -185,7 +192,10 @@ export function CampusScene({
         ref={overlay}
         selectedStop={selectedStop}
         pinnedStops={pinnedStops}
-        camera={camera}
+        focusStop={focusStop}
+        hoveredStop={hoveredStop}
+        billyStop={billyStop}
+        labelsVisible={labelsVisible}
         reducedMotion={reducedMotion}
         onSelectStop={onSelectStop}
         onCameraChange={onCameraChange}

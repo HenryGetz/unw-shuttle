@@ -12,13 +12,15 @@ right minute.
 
 ## What it does
 
-- **Your stops first.** Pick 1–3 pinned stops on first visit, or use a preset
-  such as Dorm ↔ Main Campus, Commuter / Rosedale, or Fine Arts / Library.
-  Pins persist in `localStorage`; the My Stops sheet lets you add, remove, and
-  reorder them at any time.
+- **Your stops first.** RAM and The Billy start pinned, so a first visit has
+  countdowns immediately. Pick 1–3 stops or use a preset such as Dorm ↔ Main
+  Campus, Commuter / Rosedale, or Fine Arts / Library. Pins persist in
+  `localStorage`; the My Stops sheet lets you add, remove, and reorder them at
+  any time.
 - **A map-first layout.** The 3D campus diorama (or the always-available 2D
   map) is the hero on desktop and mobile. Pinned countdowns sit directly below
-  the map, not after two screens of cards.
+  the map, not after two screens of cards. On desktop the 2D map uses a
+  north/south atlas so stop labels stay legible without zooming.
 - **A real timetable, honestly presented.** MWF, Tue–Thu, and finals service;
   the published route variants; request-only Ericksen; the final drop-off-only
   trip. The bus is a schedule simulation, not live GPS.

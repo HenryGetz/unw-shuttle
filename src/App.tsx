@@ -9,7 +9,6 @@ import { MapPanel } from './components/MapPanel';
 import { PinnedStops } from './components/PinnedStops';
 import { Onboarding } from './components/Onboarding';
 import { MyStops } from './components/MyStops';
-import { StopDetail } from './components/StopDetail';
 import { TodaySchedule } from './components/TodaySchedule';
 import { AllSchedules } from './components/AllSchedules';
 import { GoodToKnow } from './components/GoodToKnow';
@@ -66,17 +65,10 @@ export function App() {
             onSelectStop={setSelectedStop}
             onOpenMyStops={() => setMyStopsOpen(true)}
           />
-          <StopDetail
-            now={now}
-            info={info}
-            stop={selectedStop}
-            billyStop={billyStop}
-            onClear={() => setSelectedStop(null)}
-            onSelect={setSelectedStop}
-          />
           <TodaySchedule
             now={now}
             info={info}
+            billyStop={billyStop}
             selectedStop={selectedStop}
             onSelectStop={setSelectedStop}
           />

@@ -29,7 +29,7 @@ body {
   z-index: 40;
   padding-top: var(--safe-top);
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg) 84%, transparent);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
   -webkit-backdrop-filter: blur(18px) saturate(130%);
   backdrop-filter: blur(18px) saturate(130%);
 }
@@ -38,7 +38,7 @@ body {
   display: flex;
   min-height: var(--header-height);
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
   max-width: calc(var(--shell-max) + 2 * var(--gutter));
   margin-inline: auto;
@@ -48,6 +48,7 @@ body {
 @media (min-width: 900px) {
   .shell-header__inner {
     min-height: 64px;
+    gap: 20px;
     padding-inline: var(--gutter);
   }
 }
@@ -56,7 +57,7 @@ body {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   flex: 0 1 auto;
 }
 
@@ -71,9 +72,9 @@ body {
   overflow: hidden;
   color: var(--text);
   font-family: var(--font-display);
-  font-size: clamp(0.84rem, 2.7vw, 1rem);
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-size: clamp(0.86rem, 2.4vw, 0.98rem);
+  font-weight: 500;
+  letter-spacing: 0.11em;
   line-height: 1;
   white-space: nowrap;
 }
@@ -82,13 +83,30 @@ body {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  flex: none;
   margin-left: auto;
+}
+
+.shell-date {
+  color: var(--text-3);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+@media (max-width: 719px) {
+  .shell-date {
+    display: none;
+  }
 }
 
 .shell-day {
   display: inline-flex;
-  min-height: 32px;
+  min-height: 26px;
   align-items: center;
   gap: 6px;
   border: 1px solid var(--line-strong);
@@ -97,24 +115,33 @@ body {
   padding: 0 9px;
   color: var(--lavender);
   font-family: var(--font-body);
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 600;
+  letter-spacing: 0.06em;
   line-height: 1;
   white-space: nowrap;
 }
 
 .shell-day__dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   flex: none;
   border-radius: 50%;
   background: currentColor;
 }
 
 .shell-day[data-status='service'] {
-  border-color: color-mix(in srgb, var(--emerald) 32%, transparent);
-  background: var(--emerald-soft);
-  color: var(--emerald);
+  border-color: color-mix(in srgb, var(--lavender) 30%, transparent);
+  background: var(--lavender-soft);
+  color: var(--text-2);
+}
+
+.shell-day[data-status='service'] .shell-day__dot {
+  background: var(--gold);
+}
+
+.shell-day[data-status='weekend'] {
+  color: var(--text-3);
 }
 
 .shell-day[data-status='finals'] {
@@ -130,6 +157,9 @@ body {
 }
 
 .shell-clock {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
   padding: 0 4px;
   color: var(--text);
   font-family: var(--font-numeric);
@@ -141,6 +171,14 @@ body {
   white-space: nowrap;
 }
 
+.shell-clock__meridiem {
+  color: var(--text-3);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
 .shell-mystops {
   display: inline-flex;
   min-width: 44px;
@@ -148,7 +186,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line);
   border-radius: var(--pill);
   background: var(--surface-2);
   padding: 0;
@@ -169,9 +207,13 @@ body {
 }
 
 .shell-mystops:hover {
-  border-color: color-mix(in srgb, var(--gold) 40%, transparent);
-  background: var(--gold-soft);
-  color: var(--gold);
+  border-color: color-mix(in srgb, var(--lavender) 40%, transparent);
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.shell-mystops:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .shell-mystops__label {
@@ -189,19 +231,47 @@ body {
 }
 
 @media (max-width: 400px) {
+  .shell-header__inner {
+    gap: 8px;
+  }
+
+  .shell-header__right {
+    gap: 3px;
+  }
+
   .shell-brand__wordmark {
-    font-size: 0.82rem;
-    letter-spacing: 0.07em;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
   }
 
   .shell-day {
-    padding: 0 8px;
-    font-size: 0.68rem;
+    padding: 0 7px;
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
   }
 
   .shell-clock {
     padding: 0 2px;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
+  }
+
+  .shell-clock__meridiem {
+    font-size: 0.62rem;
+  }
+}
+
+@media (max-width: 359px) {
+  .shell-day {
+    min-width: 26px;
+    justify-content: center;
+    gap: 0;
+    padding: 0 6px;
+    font-size: 0;
+  }
+
+  .shell-day__dot {
+    width: 7px;
+    height: 7px;
   }
 }
 
@@ -234,7 +304,7 @@ body {
   }
 
   .map-hero__stage {
-    height: clamp(480px, 54dvh, 640px);
+    height: clamp(520px, 62dvh, 700px);
     border: 1px solid var(--line);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-panel);
@@ -290,14 +360,14 @@ body {
 .map-live {
   display: flex;
   min-width: 0;
-  max-width: min(340px, calc(100% - 112px));
-  align-items: flex-start;
-  gap: 9px;
+  max-width: min(330px, calc(100% - 104px));
+  align-items: center;
+  gap: 8px;
   flex: 0 1 auto;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
   background: var(--hud);
-  padding: 9px 11px;
+  padding: 8px 10px;
   color: var(--text);
   text-align: left;
   cursor: pointer;
@@ -317,7 +387,6 @@ body {
 .map-live__dot {
   width: 8px;
   height: 8px;
-  margin-top: 4px;
   flex: none;
   border-radius: 50%;
   background: var(--lavender);
@@ -345,54 +414,12 @@ body {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 1px;
-}
-
-.map-live__phase {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-2);
-  font-family: var(--font-body);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.map-live__route {
-  overflow: hidden;
-  color: var(--text-3);
-  font-weight: 500;
-  text-overflow: ellipsis;
-}
-
-.map-live__line {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--text);
-  font-size: 0.79rem;
-  line-height: 1.28;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.map-live__ram {
-  overflow: hidden;
-  color: var(--text-3);
-  font-family: var(--font-numeric);
-  font-size: 0.68rem;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  gap: 2px;
 }
 
 .map-live__arrow {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   align-self: center;
   flex: none;
   color: var(--gold);
@@ -482,67 +509,11 @@ body {
   max-width: min(240px, calc(100vw - 40px));
 }
 
-.map-meta {
-  display: flex;
-  align-items: center;
-  gap: 4px 16px;
-  overflow-x: auto;
-  padding: 8px max(12px, env(safe-area-inset-left)) 2px;
-  color: var(--text-3);
-  font-family: var(--font-body);
-  font-size: 0.72rem;
-  line-height: 1.4;
-  white-space: nowrap;
-  scrollbar-width: none;
-}
-
-.map-meta::-webkit-scrollbar {
-  display: none;
-}
-
-.map-meta__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex: none;
-}
-
-.map-meta__line {
-  width: 16px;
-  height: 3px;
-  flex: none;
-  border-radius: var(--pill);
-}
-
-.map-meta__line--active {
-  background: var(--gold);
-}
-
-.map-meta__line--inactive {
-  background: var(--line-strong);
-}
-
-.map-meta__billy strong {
-  color: var(--lavender);
-  font-weight: 600;
-}
-
-.map-meta__note {
-  color: var(--text-4);
-}
-
-.map-meta__note a {
-  color: var(--gold);
-  font-variant-numeric: tabular-nums;
-  text-decoration: none;
-}
-
-@media (min-width: 900px) {
-  .map-meta {
-    flex-wrap: wrap;
-    overflow: visible;
-    padding: 10px 4px 0;
-    white-space: normal;
+/* The 3D camera row occupies the full bottom rail on phones; the scene's own
+   off-screen shuttle chip already covers the Rosedale direction there. */
+@media (max-width: 899px) {
+  .map-offmap--3d {
+    display: none;
   }
 }
 
@@ -568,35 +539,7 @@ body {
   }
 }
 
-/* Stop explorer and misc shell surfaces */
-
-.stop-detail .panel-head {
-  flex-wrap: wrap;
-}
-
-.stop-detail__sub {
-  overflow-wrap: anywhere;
-}
-
-@media (max-width: 640px) {
-  .stop-chips {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .stop-chip {
-    width: 100%;
-  }
-
-  .departure {
-    gap: 10px;
-  }
-
-  .departure__time {
-    min-width: 78px;
-    font-size: 0.88rem;
-  }
-}
+/* Misc shell surfaces */
 
 .good-to-know__list {
   display: grid;

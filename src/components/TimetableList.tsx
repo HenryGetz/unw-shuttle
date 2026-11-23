@@ -105,7 +105,7 @@ export function TimetableList({ service, stopId, clockSeconds }: TimetableListPr
   if (nextRow) {
     for (const row of decorated) row.isNext = row === nextRow;
   }
-  const showPhone = stopId === 'erickson' || decorated.some((row) => row.request);
+  const showPhone = stopId !== 'erickson' && decorated.some((row) => row.request);
   const stopName = STOPS[stopId].name;
 
   if (decorated.length === 0) {
@@ -119,7 +119,7 @@ export function TimetableList({ service, stopId, clockSeconds }: TimetableListPr
   return (
     <div className="trip-list-wrap">
       <p className="trip-list__count">
-        {stopName} · {decorated.length} {decorated.length === 1 ? 'trip' : 'trips'} today
+        {decorated.length} {decorated.length === 1 ? 'trip' : 'trips'} today
       </p>
       <ul className="trip-list">
         {decorated.map((row) => {
@@ -151,15 +151,12 @@ export function TimetableList({ service, stopId, clockSeconds }: TimetableListPr
               <details className={classes}>
                 <summary
                   className="trip-row__summary"
-                  aria-label={`Trip ${row.index + 1} of ${service.trips.length}. ${time}. ${routeLabel}. ${badges.join('. ')}`}
+                  aria-label={[`Trip ${row.index + 1} of ${service.trips.length}`, time, routeLabel, ...badges].join('. ')}
                 >
                   <span className="trip-row__time">{time}</span>
                   <span className="trip-row__body">
-                    <span className="trip-row__title">
-                      Trip {row.index + 1} of {service.trips.length}
-                    </span>
+                    <span className="trip-row__title">Trip {row.index + 1}</span>
                     <span className="trip-row__meta">
-                      <span className={`trip-tag trip-tag--${route.id}`}>{routeLabel}</span>
                       {(row.kind === 'request' || row.request) && (
                         <span className="trip-tag trip-tag--req">Request only</span>
                       )}
@@ -186,6 +183,9 @@ export function TimetableList({ service, stopId, clockSeconds }: TimetableListPr
                   </svg>
                 </summary>
                 <div className="trip-row__detail">
+                  <p className="trip-route">
+                    <span className={`trip-tag trip-tag--${route.id}`}>{routeLabel}</span>
+                  </p>
                   <ol className="trip-stops">
                     {tripStops(row.trip, service.kind).map((stop) => (
                       <li key={stop.id}>

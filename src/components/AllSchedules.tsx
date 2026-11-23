@@ -2,7 +2,7 @@ import { useState, type KeyboardEvent } from 'react';
 import type { ServiceDay, ServiceKind } from '../data/types';
 import { FINALS_SERVICE, MWF_SERVICE, TR_SERVICE } from '../data/schedule';
 import { RAM_STOP } from '../data/route';
-import { nextDeparture } from '../lib/schedule';
+import { nextDeparture, billyStopForService } from '../lib/schedule';
 import type { ServiceSnapshot } from '../lib/schedule';
 import { ScheduleTable } from './ScheduleTable';
 
@@ -88,7 +88,9 @@ export function AllSchedules({ now, info }: AllSchedulesProps) {
           service={activeService}
           caption={`${activeService.label} shuttle timetable`}
           highlightTripId={highlightTripId}
+          billyStop={billyStopForService(activeService)}
         />
+        <p className="table-hint">Swipe the grid sideways for every stop.</p>
         {activeService.note && <p className="service-note">{activeService.note}</p>}
       </div>
     </details>

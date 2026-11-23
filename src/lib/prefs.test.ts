@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { STOP_ORDER } from '../data/route';
-import { MAX_PINNED_STOPS, PIN_PRESETS, isStopId, normalizePinnedStops } from './prefs';
+import {
+  DEFAULT_PREFS,
+  MAX_PINNED_STOPS,
+  PIN_PRESETS,
+  isStopId,
+  normalizePinnedStops,
+} from './prefs';
 
 describe('personalization preferences', () => {
+  it('starts a first visit with the two main stops pinned', () => {
+    expect(DEFAULT_PREFS.onboarded).toBe(false);
+    expect(DEFAULT_PREFS.pinnedStops).toEqual(['ramseyer', 'brc-totino']);
+  });
+
   it('keeps unique, valid stops in order and caps the list', () => {
     const normalized = normalizePinnedStops([
       'ramseyer',

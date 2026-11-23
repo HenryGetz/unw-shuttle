@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { STOPS, STOP_ORDER } from '../data/route';
+import { STOPS, STOP_ORDER, stopShortLabel } from '../data/route';
 import type { StopId, Trip } from '../data/types';
 import {
   departuresForStop,
@@ -74,12 +74,6 @@ interface PinCardProps {
 
 function PinCard({ stopId, now, info, selected, billyStop, onSelect }: PinCardProps) {
   const stop = STOPS[stopId];
-  const subName =
-    stopId === 'erickson'
-      ? stop.name
-      : stop.name.startsWith(stop.shortName)
-        ? stop.subtitle
-        : stop.name;
   const next = nextDeparture(now, stopId);
   const upcoming = nextDepartures(now, stopId, 4);
   const later = upcoming.slice(1);
@@ -160,10 +154,10 @@ function PinCard({ stopId, now, info, selected, billyStop, onSelect }: PinCardPr
       >
         <span className="pin-card__head">
           <span className="pin-card__title">
-            <span className="pin-card__name">{stop.shortName}</span>
+            <span className="pin-card__name">{stopShortLabel(stopId, billyStop)}</span>
             {selected && <span className="pin-card__dot" aria-hidden="true" />}
           </span>
-          <span className="pin-card__sub">{subName}</span>
+          <span className="pin-card__sub">{stop.subtitle}</span>
         </span>
         <span
           className={`pin-card__count${soon ? ' is-soon' : ''}${next ? '' : ' pin-card__count--text'}`}
@@ -347,9 +341,8 @@ export function PinnedStops({
 
   const count = pinnedStops.length;
   const pinKey = pinnedStops.join(',');
-  const showDots = count > 2;
+  const showDots = count > 1;
   const activeIndex = Math.min(activeDot, Math.max(0, count - 1));
-  const showCallStrip = selectedStop === 'erickson' && !pinnedStops.includes('erickson');
 
   // A changed pin set replaces the rail, so dot state has to start over with it.
   useEffect(() => {
@@ -391,7 +384,7 @@ export function PinnedStops({
         <div className="pin-head__text">
           <p className="pin-head__eyebrow">At a glance</p>
           <h2 className="pin-head__title" id={headingId}>
-            {count > 0 ? 'Your stops' : 'Next up'}
+            {count > 0 ? 'Your stops' : 'Next shuttle'}
           </h2>
         </div>
         <button type="button" className="pin-head__edit" onClick={onOpenMyStops}>
@@ -441,12 +434,6 @@ export function PinnedStops({
             </div>
           )}
         </>
-      )}
-
-      {showCallStrip && (
-        <div className="pin-call">
-          <CallSafety note="Ericksen Center pickups are request only." />
-        </div>
       )}
     </section>
   );

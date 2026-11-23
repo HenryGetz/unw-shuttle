@@ -1,11 +1,11 @@
 import { lazy, Suspense, useState } from 'react';
 import type { StopId } from '../data/types';
-import { BILLY_FINALS_STOP, STOPS } from '../data/route';
+import { BILLY_FINALS_STOP, STOPS, stopShortLabel } from '../data/route';
 import { nextDeparture } from '../lib/schedule';
 import type { BusState, ServiceSnapshot } from '../lib/schedule';
 import type { CameraPreference, MapViewMode } from '../lib/prefs';
-import { formatRelative, formatTime } from '../lib/time';
-import { SCENE_CAMERA_LABEL } from '../scene/contracts';
+import { formatTime } from '../lib/time';
+import { busFocusStop, SCENE_CAMERA_LABEL } from '../scene/contracts';
 import { SceneBoundary } from './SceneBoundary';
 import { SvgCampusMap, SVG_BUS_OFFMAP_Z } from './SvgCampusMap';
 
@@ -66,9 +66,17 @@ export function MapPanel({
   pinnedStops,
 }: MapPanelProps) {
   const [webglSupported] = useState(supportsWebGL);
+  const [labelsVisible, setLabelsVisible] = useState(false);
   const show3d = webglSupported && viewMode === '3d';
-  const nextStop = bus.nextStop ? STOPS[bus.nextStop].shortName : null;
-  const eta = bus.secondsToNextStop !== null ? formatRelative(bus.secondsToNextStop) : null;
+  const focusStop = busFocusStop(bus);
+  const focusLabel = focusStop ? stopShortLabel(focusStop, billyStop) : null;
+  const nextStopLabel = bus.nextStop ? stopShortLabel(bus.nextStop, billyStop) : null;
+  const eta =
+    bus.secondsToNextStop !== null
+      ? bus.secondsToNextStop < 45
+        ? '<1m'
+        : `${Math.max(1, Math.round(bus.secondsToNextStop / 60))}m`
+      : null;
   const nextRam = nextDeparture(now, 'ramseyer');
   const rosedale = nextDeparture(now, 'rosedale');
   const rosedaleRequestOnly =
@@ -81,22 +89,29 @@ export function MapPanel({
   const busSouthOfMap = bus.position.z > SVG_BUS_OFFMAP_Z;
   const routeText = bus.route.id === 'via' ? 'Via Rosedale' : 'Campus loop';
   const billyLabel = billyStop === BILLY_FINALS_STOP ? 'Graham' : STOPS[billyStop].shortName;
-  const showNextStop = bus.phase === 'in-service' || bus.phase === 'returning';
+  const nextRamTime = nextRam ? formatTime(nextRam.atMinutes) : null;
+  const ramStopLabel = stopShortLabel('ramseyer', billyStop);
+  const primaryText =
+    bus.phase === 'in-service'
+      ? `En route to ${nextStopLabel ?? 'the next stop'}${eta ? ` · ${eta}` : ''}`
+      : bus.phase === 'returning'
+        ? `Returning to ${ramStopLabel}${eta ? ` · ${eta}` : ''}`
+        : bus.phase === 'parked'
+          ? `Parked at ${focusLabel ?? ramStopLabel}${nextRamTime ? ` · Next ${nextRamTime}` : ''}`
+          : nextRamTime
+            ? `Off duty · Next ${ramStopLabel} ${nextRamTime}`
+            : 'Off duty · No daytime service';
   const phaseText = PHASE_LABEL[bus.phase];
+  const ramText = nextRamTime
+    ? `Next ${ramStopLabel} departure ${nextRamTime}`
+    : info.service
+      ? 'Last RAM trip has left'
+      : 'No daytime service';
   const followShuttle = () => {
     if (!webglSupported) return;
     if (!show3d) onViewModeChange('3d');
     onCameraChange('follow');
   };
-  const liveDetail =
-    showNextStop && nextStop
-      ? `Next ${nextStop}${eta ? ` · ${eta}` : ''}`
-      : bus.label;
-  const ramText = nextRam
-    ? `Next RAM ${formatTime(nextRam.atMinutes)}`
-    : info.service
-      ? 'Last RAM trip has left'
-      : 'No daytime service';
 
   return (
     <section className="map-hero" aria-labelledby="map-title">
@@ -110,8 +125,10 @@ export function MapPanel({
               <Suspense fallback={<div className="map-loading">Loading 3D campus…</div>}>
                 <CampusScene
                   bus={bus}
+                  billyStop={billyStop}
                   selectedStop={selectedStop}
                   pinnedStops={pinnedStops}
+                  labelsVisible={labelsVisible}
                   camera={camera}
                   resetToken={resetToken}
                   onSelectStop={onSelectStop}
@@ -121,43 +138,46 @@ export function MapPanel({
             </SceneBoundary>
           </div>
         ) : (
-          <>
-            <div className="map-hero__scene">
-              <SvgCampusMap
-                bus={bus}
-                billyStop={billyStop}
-                selectedStop={selectedStop}
-                onSelectStop={onSelectStop}
-              />
-            </div>
-            <div className="map-offmap">
-              <button
-                type="button"
-                className={`map-offmap__chip ${selectedStop === 'rosedale' ? 'is-selected' : ''}`}
-                aria-pressed={selectedStop === 'rosedale'}
-                aria-label={`Rosedale Square, 1.2 kilometers south of campus. ${rosedaleNote} Select for details.`}
-                onClick={() => onSelectStop('rosedale')}
-              >
-                <span className="map-offmap__arrow" aria-hidden="true">
-                  ↓
-                </span>
-                <span>
-                  <strong>Rosedale</strong> · 1.2 km
-                </span>
-              </button>
-              {busSouthOfMap && (
-                <p className="map-offmap__chip map-offmap__chip--bus">
-                  <span className="map-offmap__arrow" aria-hidden="true">
-                    ↓
-                  </span>
-                  <span>
-                    <strong>Shuttle</strong> · south of map
-                  </span>
-                </p>
-              )}
-            </div>
-          </>
+          <div className="map-hero__scene">
+            <SvgCampusMap
+              bus={bus}
+              billyStop={billyStop}
+              selectedStop={selectedStop}
+              pinnedStops={pinnedStops}
+              labelsVisible={labelsVisible}
+              onSelectStop={onSelectStop}
+            />
+          </div>
         )}
+
+        <div className={`map-offmap${show3d ? ' map-offmap--3d' : ''}`}>
+          {(!show3d || camera === 'campus') && (
+            <button
+              type="button"
+              className={`map-offmap__chip ${selectedStop === 'rosedale' ? 'is-selected' : ''}`}
+              aria-pressed={selectedStop === 'rosedale'}
+              aria-label={`Rosedale Square, 1.2 kilometers south of campus. ${rosedaleNote} Select for details.`}
+              onClick={() => onSelectStop('rosedale')}
+            >
+              <span className="map-offmap__arrow" aria-hidden="true">
+                ↓
+              </span>
+              <span>
+                <strong>Rosedale</strong> · 1.2 km
+              </span>
+            </button>
+          )}
+          {!show3d && busSouthOfMap && (
+            <p className="map-offmap__chip map-offmap__chip--bus">
+              <span className="map-offmap__arrow" aria-hidden="true">
+                ↓
+              </span>
+              <span>
+                <strong>Shuttle</strong> · south of map
+              </span>
+            </p>
+          )}
+        </div>
 
         <div className="map-hud map-hud--top">
           <button
@@ -165,18 +185,16 @@ export function MapPanel({
             className={`map-live map-live--${bus.phase}`}
             onClick={followShuttle}
             disabled={!webglSupported}
-            aria-label={`${phaseText}${bus.phase === 'off' ? '' : `, ${routeText}`}. ${liveDetail}. ${ramText}.${
+            aria-label={`${phaseText}${bus.phase === 'off' ? '' : `, ${routeText}`}. ${primaryText}. ${ramText}.${
               webglSupported ? ' Follow the shuttle on the map.' : ''
             }`}
           >
             <span className="map-live__dot" aria-hidden="true" />
             <span className="map-live__text">
-              <span className="map-live__phase">
-                {phaseText}
-                {bus.phase !== 'off' && <span className="map-live__route">{routeText}</span>}
-              </span>
-              <span className="map-live__line">{liveDetail}</span>
-              <span className="map-live__ram">{ramText}</span>
+              <span className="map-live__primary">{primaryText}</span>
+              {bus.phase !== 'off' && (
+                <span className="map-live__secondary">{routeText}</span>
+              )}
             </span>
             {webglSupported && (
               <svg
@@ -219,10 +237,10 @@ export function MapPanel({
           </div>
         </div>
 
-        {show3d && (
-          <div className="map-hud map-hud--bottom">
-            <div className="map-camera" role="group" aria-label="Map camera">
-              {CAMERAS.map((id) => (
+        <div className="map-hud map-hud--bottom">
+          <div className="map-camera" role="group" aria-label="Map controls">
+            {show3d &&
+              CAMERAS.map((id) => (
                 <button
                   key={id}
                   type="button"
@@ -233,7 +251,8 @@ export function MapPanel({
                   {SCENE_CAMERA_LABEL[id]}
                 </button>
               ))}
-              <span className="map-camera__divider" aria-hidden="true" />
+            {show3d && <span className="map-camera__divider" aria-hidden="true" />}
+            {show3d && (
               <button
                 type="button"
                 className="map-camera__button map-camera__button--reset"
@@ -242,31 +261,35 @@ export function MapPanel({
               >
                 Reset
               </button>
-            </div>
+            )}
+            <button
+              type="button"
+              className="map-camera__button map-camera__button--labels"
+              aria-pressed={labelsVisible}
+              aria-label="Show every stop label"
+              onClick={() => setLabelsVisible((visible) => !visible)}
+            >
+              Labels
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
-      <div className="map-meta">
-        <span className="map-meta__item">
-          <i className="map-meta__line map-meta__line--active" aria-hidden="true" /> Active loop
-        </span>
-        <span className="map-meta__item">
-          <i className="map-meta__line map-meta__line--inactive" aria-hidden="true" /> Other loop
-        </span>
-        <span className="map-meta__item map-meta__billy">
-          {info.service ? 'Billy stop today' : 'Billy stop next service'}: <strong>{billyLabel}</strong>
+      <div className="map-statusline">
+        <p>
+          {info.service ? 'Billy stop today' : 'Billy stop next service'}:{' '}
+          <strong>{billyLabel}</strong>
           {billyStop === BILLY_FINALS_STOP ? ' · finals timetable' : ''}
-        </span>
-        <span className="map-meta__item map-meta__note">
+        </p>
+        <p>
           Ericksen request-only · <a href="tel:+16516315310">651-631-5310</a>
-        </span>
-        <span className="map-meta__item map-meta__note">
+        </p>
+        <p>
           Map ©{' '}
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
             OpenStreetMap
           </a>
-        </span>
+        </p>
       </div>
     </section>
   );

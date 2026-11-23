@@ -1,4 +1,5 @@
 import type { ServiceDay, ServiceKind, StopId, Trip } from '../data/types';
+import { BILLY_FINALS_STOP, BILLY_REGULAR_STOP, stopShortLabel } from '../data/route';
 import { routeForTrip } from '../lib/schedule';
 import { formatTime } from '../lib/time';
 import '../styles/schedule.css';
@@ -8,32 +9,49 @@ export interface ScheduleColumn {
   label: string;
 }
 
-const REGULAR_COLUMNS: ScheduleColumn[] = [
-  { id: 'ramseyer', label: 'RAM' },
-  { id: 'akenson', label: 'Akenson' },
-  { id: 'rosedale', label: 'Rosedale' },
-  { id: 'lower-riley', label: 'Lower Riley' },
-  { id: 'brc-totino', label: 'BRC / Totino' },
-  { id: 'erickson', label: 'Ericksen' },
+const REGULAR_STOP_IDS: StopId[] = [
+  'ramseyer',
+  'akenson',
+  'rosedale',
+  'lower-riley',
+  'brc-totino',
+  'erickson',
 ];
 
-const FINALS_COLUMNS: ScheduleColumn[] = [
-  { id: 'ramseyer', label: 'RAM' },
-  { id: 'akenson', label: 'Akenson' },
-  { id: 'rosedale', label: 'Rosedale' },
-  { id: 'graham', label: 'Graham (Billy)' },
-  { id: 'brc-totino', label: 'BRC / Totino' },
-  { id: 'erickson', label: 'Ericksen' },
+const FINALS_STOP_IDS: StopId[] = [
+  'ramseyer',
+  'akenson',
+  'rosedale',
+  'graham',
+  'brc-totino',
+  'erickson',
 ];
 
-export function columnsForService(kind: ServiceKind): ScheduleColumn[] {
-  return kind === 'finals' ? FINALS_COLUMNS : REGULAR_COLUMNS;
+const SHORT_HEADER: Record<StopId, string> = {
+  ramseyer: 'RAM',
+  akenson: 'Ake',
+  rosedale: 'Ros',
+  'lower-riley': 'Riley',
+  graham: 'Graham',
+  'brc-totino': 'BRC',
+  erickson: 'Erick',
+};
+
+export function columnsForService(kind: ServiceKind, billyStop?: StopId): ScheduleColumn[] {
+  const resolvedBilly =
+    billyStop ?? (kind === 'finals' ? BILLY_FINALS_STOP : BILLY_REGULAR_STOP);
+  // Only the day's Billy stop prints "Billy"; the other Billy-related stop keeps its own name.
+  return (kind === 'finals' ? FINALS_STOP_IDS : REGULAR_STOP_IDS).map((id) => ({
+    id,
+    label: stopShortLabel(id, resolvedBilly) === 'The Billy' ? 'Billy' : SHORT_HEADER[id],
+  }));
 }
 
 interface ScheduleTableProps {
   service: ServiceDay;
   caption: string;
   highlightTripId?: string | null;
+  billyStop?: StopId;
 }
 
 function renderCell(trip: Trip, stopId: StopId, kind: ServiceKind) {
@@ -78,15 +96,19 @@ function renderCell(trip: Trip, stopId: StopId, kind: ServiceKind) {
   );
 }
 
-export function ScheduleTable({ service, caption, highlightTripId = null }: ScheduleTableProps) {
-  const columns = columnsForService(service.kind);
+export function ScheduleTable({
+  service,
+  caption,
+  highlightTripId = null,
+  billyStop,
+}: ScheduleTableProps) {
+  const columns = columnsForService(service.kind, billyStop);
   const notes = service.trips.flatMap((trip, index) =>
     trip.note ? [{ id: trip.id, text: `Trip ${index + 1}: ${trip.note}` }] : [],
   );
 
   return (
     <div className="schedule-table sched-grid">
-      <p className="table-hint">Swipe the grid sideways for every stop.</p>
       <div className="sched-grid__scroll table-wrap">
         <table className="sched-grid__table">
           <caption className="sr-only">{caption}</caption>

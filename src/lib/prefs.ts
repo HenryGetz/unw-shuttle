@@ -53,7 +53,9 @@ export const PIN_PRESETS: PinPreset[] = [
 export const DEFAULT_PREFS: ShuttlePrefs = {
   version: 1,
   onboarded: false,
-  pinnedStops: [],
+  // The dashboard exists for these two stops; skipping onboarding must not
+  // leave a first-time visitor without a countdown.
+  pinnedStops: ['ramseyer', 'brc-totino'],
   viewMode: '3d',
   defaultCamera: 'campus',
 };

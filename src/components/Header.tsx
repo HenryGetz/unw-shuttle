@@ -1,4 +1,5 @@
 import type { ServiceSnapshot } from '../lib/schedule';
+import { formatDateKey, formatTime } from '../lib/time';
 
 interface HeaderProps {
   info: ServiceSnapshot;
@@ -29,6 +30,8 @@ export function Header({ info, onOpenMyStops }: HeaderProps) {
   const { clock } = info;
   const hour = String(clock.hour).padStart(2, '0');
   const minute = String(clock.minute).padStart(2, '0');
+  const time = formatTime(clock.minutes);
+  const [timeLabel, meridiem] = time.split(' ');
   const day = dayBadge(info);
 
   return (
@@ -54,6 +57,9 @@ export function Header({ info, onOpenMyStops }: HeaderProps) {
         </div>
 
         <div className="shell-header__right">
+          <time className="shell-date" dateTime={clock.dateKey}>
+            {formatDateKey(clock.dateKey)}
+          </time>
           <span
             className="shell-day"
             data-status={info.status}
@@ -66,9 +72,12 @@ export function Header({ info, onOpenMyStops }: HeaderProps) {
           <time
             className="shell-clock"
             dateTime={`${clock.dateKey}T${hour}:${minute}`}
-            aria-label={`Campus time ${hour}:${minute}`}
+            aria-label={`Campus time ${time}`}
           >
-            {hour}:{minute}
+            {timeLabel}
+            <span className="shell-clock__meridiem" aria-hidden="true">
+              {meridiem}
+            </span>
           </time>
           <button
             type="button"

@@ -4,58 +4,59 @@ import { STOPS, STOP_ORDER } from '../data/route';
 import type { StopId, StopInfo } from '../data/types';
 import { PALETTE } from './palette';
 
-export const STOP_ANCHOR_HEIGHT = 30;
+export const STOP_ANCHOR_HEIGHT = 28;
 
 interface StopMarkerProps {
   stop: StopInfo;
-  active: boolean;
+  selected: boolean;
   pinned: boolean;
+  hovered: boolean;
   onSelect: (stop: StopId) => void;
+  onHover: (stop: StopId | null) => void;
 }
 
-function StopMarker({ stop, active, pinned, onSelect }: StopMarkerProps) {
-  const accent = active || pinned ? PALETTE.stopSelected : PALETTE.stop;
-  const radius = active ? 18 : 15;
-  const stemHeight = active ? 34 : 26;
+/**
+ * A route beacon, not a map pin: a thin stem and a small ring on the ground.
+ * Its floating label is owned by SceneLabels; the invisible cylinder keeps the
+ * tap target comfortably larger than the visible marker.
+ */
+function StopMarker({ stop, selected, pinned, hovered, onSelect, onHover }: StopMarkerProps) {
+  const accent = selected || hovered ? PALETTE.stopSelected : pinned ? PALETTE.stopPinned : PALETTE.stop;
+  const radius = selected ? 11 : hovered ? 10 : 8;
+  const stemHeight = selected ? 24 : hovered ? 21 : 17;
 
   return (
-    <group
-      position={[stop.x, 0, stop.z]}
-      onPointerDown={(event) => {
-        event.stopPropagation();
-        onSelect(stop.id);
-      }}
-    >
-      <mesh position-y={0.6} rotation-x={-Math.PI / 2}>
-        <ringGeometry args={[radius - 1.6, radius, 40]} />
+    <group position={[stop.x, 0, stop.z]}>
+      <mesh position-y={0.5} rotation-x={-Math.PI / 2}>
+        <ringGeometry args={[Math.max(2, radius - 1.4), radius, 36]} />
         <meshBasicMaterial
           color={accent}
           transparent
-          opacity={active ? 0.94 : pinned ? 0.7 : 0.5}
+          opacity={selected ? 0.92 : pinned ? 0.62 : hovered ? 0.7 : 0.4}
           side={THREE.DoubleSide}
           depthWrite={false}
           toneMapped={false}
         />
       </mesh>
 
-      <mesh position-y={0.6} rotation-x={-Math.PI / 2}>
-        <circleGeometry args={[radius * 0.42, 24]} />
+      <mesh position-y={0.5} rotation-x={-Math.PI / 2}>
+        <circleGeometry args={[radius * 0.4, 20]} />
         <meshBasicMaterial
           color={PALETTE.stopCore}
           transparent
-          opacity={0.8}
+          opacity={0.72}
           depthWrite={false}
           toneMapped={false}
         />
       </mesh>
 
-      {pinned && !active ? (
-        <mesh position-y={0.62} rotation-x={-Math.PI / 2}>
-          <ringGeometry args={[radius + 4.4, radius + 5.6, 40]} />
+      {pinned && !selected ? (
+        <mesh position-y={0.52} rotation-x={-Math.PI / 2}>
+          <ringGeometry args={[radius + 3.6, radius + 4.4, 36]} />
           <meshBasicMaterial
             color={PALETTE.stopPinned}
             transparent
-            opacity={0.42}
+            opacity={0.34}
             side={THREE.DoubleSide}
             depthWrite={false}
             toneMapped={false}
@@ -64,30 +65,41 @@ function StopMarker({ stop, active, pinned, onSelect }: StopMarkerProps) {
       ) : null}
 
       <mesh position-y={stemHeight / 2}>
-        <cylinderGeometry args={[0.42, 0.9, stemHeight, 6, 1, true]} />
+        <cylinderGeometry args={[0.3, 0.7, stemHeight, 6, 1, true]} />
         <meshBasicMaterial
           color={accent}
           transparent
-          opacity={active ? 0.62 : 0.34}
+          opacity={selected ? 0.55 : 0.28}
           side={THREE.DoubleSide}
           depthWrite={false}
           toneMapped={false}
         />
       </mesh>
 
-      <mesh position-y={stemHeight + 1.5}>
-        <octahedronGeometry args={[active ? 2.4 : 1.9, 0]} />
+      <mesh position-y={stemHeight + 1}>
+        <octahedronGeometry args={[selected ? 1.9 : hovered ? 1.6 : 1.2, 0]} />
         <meshBasicMaterial
           color={accent}
           transparent
-          opacity={active ? 1 : 0.8}
+          opacity={selected ? 1 : 0.72}
           depthWrite={false}
           toneMapped={false}
         />
       </mesh>
 
-      <mesh position-y={24}>
-        <cylinderGeometry args={[20, 20, 48, 8, 1, true]} />
+      <mesh
+        position-y={30}
+        onPointerDown={(event) => {
+          event.stopPropagation();
+          onSelect(stop.id);
+        }}
+        onPointerEnter={(event) => {
+          event.stopPropagation();
+          onHover(stop.id);
+        }}
+        onPointerLeave={() => onHover(null)}
+      >
+        <cylinderGeometry args={[40, 40, 70, 10, 1, true]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
     </group>
@@ -97,10 +109,18 @@ function StopMarker({ stop, active, pinned, onSelect }: StopMarkerProps) {
 interface StopMarkersProps {
   selectedStop: StopId | null;
   pinnedStops: StopId[];
+  hoveredStop: StopId | null;
   onSelectStop: (stop: StopId) => void;
+  onHoverStop: (stop: StopId | null) => void;
 }
 
-export function StopMarkers({ selectedStop, pinnedStops, onSelectStop }: StopMarkersProps) {
+export function StopMarkers({
+  selectedStop,
+  pinnedStops,
+  hoveredStop,
+  onSelectStop,
+  onHoverStop,
+}: StopMarkersProps) {
   const pinned = useMemo(() => new Set(pinnedStops), [pinnedStops]);
 
   return (
@@ -109,9 +129,11 @@ export function StopMarkers({ selectedStop, pinnedStops, onSelectStop }: StopMar
         <StopMarker
           key={id}
           stop={STOPS[id]}
-          active={selectedStop === id}
+          selected={selectedStop === id}
           pinned={pinned.has(id)}
+          hovered={hoveredStop === id}
           onSelect={onSelectStop}
+          onHover={onHoverStop}
         />
       ))}
     </group>

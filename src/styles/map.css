@@ -3,9 +3,9 @@
 /* Scene label layer ------------------------------------------------------ */
 
 .scene-root {
-  --scene-inset-top: 96px;
+  --scene-inset-top: 74px;
   --scene-inset-right: 12px;
-  --scene-inset-bottom: 86px;
+  --scene-inset-bottom: 78px;
   --scene-inset-left: 12px;
 }
 
@@ -39,7 +39,7 @@
   height: 1px;
   border-radius: 999px;
   transform-origin: 0 50%;
-  opacity: 0.48;
+  opacity: 0.42;
   will-change: transform, width;
 }
 
@@ -50,10 +50,6 @@
 .scene-stem--bus {
   height: 1.5px;
   opacity: 0.7;
-}
-
-.scene-stem--place {
-  opacity: 0.3;
 }
 
 .scene-label {
@@ -150,23 +146,6 @@
   opacity: 1;
 }
 
-.scene-label__short {
-  display: none;
-}
-
-/* Compact viewports: only secondary stops abbreviate; pinned/selected stay full. */
-.scene-labels[data-compact='true']
-  .scene-label--stop:not(.is-pinned):not(.is-selected)
-  .scene-label__full {
-  display: none;
-}
-
-.scene-labels[data-compact='true']
-  .scene-label--stop:not(.is-pinned):not(.is-selected)
-  .scene-label__short {
-  display: inline;
-}
-
 .scene-label--bus {
   display: inline-flex;
   align-items: center;
@@ -195,53 +174,6 @@
   border-radius: 50%;
   background: #fff8e1;
   box-shadow: 0 0 0 2px rgba(26, 15, 46, 0.18);
-}
-
-.scene-label--place {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 7px;
-  border: 1px solid rgba(182, 166, 220, 0.14);
-  border-radius: 7px;
-  background: rgba(10, 7, 19, 0.62);
-  color: var(--text-3, #a99cbf);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-  pointer-events: none;
-  backdrop-filter: blur(4px);
-}
-
-.scene-label__mark {
-  width: 4px;
-  height: 4px;
-  flex: none;
-  border-radius: 1px;
-  background: currentColor;
-  opacity: 0.8;
-}
-
-.scene-label--academic {
-  color: #c8b7ec;
-}
-
-.scene-label--residential {
-  color: #a9b8d8;
-}
-
-.scene-label--athletic {
-  color: #b4c7ac;
-}
-
-.scene-label--landmark {
-  border-color: rgba(224, 177, 131, 0.22);
-  color: #e0b183;
-}
-
-.scene-label--context {
-  color: #9d92b4;
 }
 
 .scene-label--edge {
@@ -285,10 +217,33 @@
   transition: none;
 }
 
+/* Compact live HUD. The base layout lives in shell.css; these are the two
+   lines the map slice controls. */
+.map-live__primary {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.79rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-live__secondary {
+  display: none;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: 0.68rem;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 2D map ---------------------------------------------------------------- */
 
-/* The campus is a tall, north-south plan. In the full-bleed landscape stage
-   it scrolls vertically at a readable scale instead of shrinking to a strip. */
+/* The plan keeps its true aspect and is contained by the stage: the whole
+   campus is framed on first paint, with no internal scrolling. */
 .map-hero__stage.map-hero__stage--2d {
   background:
     radial-gradient(760px 520px at 50% 42%, rgba(46, 27, 70, 0.5), transparent 72%),
@@ -296,29 +251,109 @@
 }
 
 .map-hero__stage.map-hero__stage--2d .map-hero__scene {
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(220, 206, 245, 0.24) transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .map-hero__stage.map-hero__stage--2d .map-hero__scene > svg {
   display: block;
-  width: min(100%, 820px);
-  height: auto;
-  min-height: 100%;
-  margin-inline: auto;
-  border-inline: 1px solid rgba(220, 206, 245, 0.08);
-  background: #0c0816;
-  box-shadow: 0 28px 90px rgba(3, 0, 8, 0.6);
+  width: 100%;
+  height: 100%;
+  background: transparent;
 }
 
 .map-stage--2d {
   background: radial-gradient(120% 80% at 50% 24%, #1a1228 0%, #0a0713 72%);
 }
 
+.campus-map-frame {
+  position: absolute;
+  inset: 0;
+}
+
+.campus-map-frame > .campus-map {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.campus-map-atlas {
+  position: absolute;
+  inset: 0;
+  display: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+}
+
+.campus-map-atlas__pane {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(220, 206, 245, 0.1);
+  border-radius: var(--radius-md);
+  background: radial-gradient(120% 90% at 50% 0%, rgba(38, 25, 58, 0.55), #0c0816 70%);
+}
+
+.campus-map-atlas__pane > .campus-map {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.campus-map-atlas__title {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  z-index: 2;
+  border-radius: var(--pill);
+  background: color-mix(in srgb, var(--bg-deep) 70%, transparent);
+  padding: 4px 9px;
+  color: var(--text-4);
+  font-family: var(--font-body);
+  font-size: 0.61rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.campus-map--atlas .map-stop__label {
+  font-size: 18px;
+  stroke-width: 3px;
+}
+
+.campus-map--atlas .map-building-label {
+  font-size: 15px;
+  stroke-width: 4px;
+}
+
+@media (min-width: 900px) {
+  .campus-map-frame > .campus-map--full {
+    display: none;
+  }
+
+  .campus-map-atlas {
+    display: grid;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1340px) {
+  .campus-map-atlas__title {
+    top: 56px;
+  }
+}
+
 .map-ground {
   fill: #0c0816;
+  stroke: rgba(220, 206, 245, 0.12);
+  stroke-width: 2;
 }
 
 .map-water__shape {
@@ -356,7 +391,7 @@
 }
 
 .map-building {
-  stroke-width: 1.2;
+  stroke-width: 2.2;
 }
 
 .map-building--context {
@@ -391,32 +426,35 @@
 
 .map-route--inactive {
   stroke: #4a3d63;
-  stroke-width: 7;
-  opacity: 0.55;
-  stroke-dasharray: 18 14;
+  stroke-width: 12;
+  opacity: 0.5;
+  stroke-dasharray: 26 20;
 }
 
 .map-route--warm {
   stroke: #f5c024;
-  stroke-width: 24;
+  stroke-width: 34;
   opacity: 0.1;
 }
 
 .map-route--active {
   stroke: #f2b705;
-  stroke-width: 9;
+  stroke-width: 16;
   opacity: 0.95;
 }
 
+/* Labelled only when the reader asks for labels, and only where the plan has
+   room. Faint by default so the route and stops stay dominant. */
 .map-building-label {
+  display: none;
   fill: rgba(232, 223, 246, 0.78);
   font-family: var(--font-body, ui-sans-serif, system-ui, sans-serif);
-  font-size: 23px;
-  font-weight: 600;
+  font-size: 30px;
+  font-weight: 500;
   letter-spacing: 0.01em;
   paint-order: stroke;
   stroke: #0c0816;
-  stroke-width: 7px;
+  stroke-width: 3px;
   stroke-linejoin: round;
   pointer-events: none;
 }
@@ -441,10 +479,10 @@
   fill: #9d92b4;
 }
 
-.map-building-label--anchor {
-  font-size: 21px;
-  font-weight: 500;
-  opacity: 0.86;
+@media (min-width: 900px) {
+  .map-building-label {
+    display: inline;
+  }
 }
 
 .map-stop {
@@ -459,7 +497,7 @@
 .map-stop__focus {
   fill: none;
   stroke: transparent;
-  stroke-width: 3;
+  stroke-width: 5;
 }
 
 .map-stop:focus-visible .map-stop__focus {
@@ -469,15 +507,15 @@
 .map-stop__selection {
   fill: none;
   stroke: #f2b705;
-  stroke-width: 2;
-  stroke-dasharray: 4 6;
+  stroke-width: 4;
+  stroke-dasharray: 8 10;
   opacity: 0.85;
 }
 
 .map-stop__halo {
   fill: #0c0816;
   stroke: #b6a6dc;
-  stroke-width: 4.5;
+  stroke-width: 10;
 }
 
 .map-stop--ram .map-stop__halo {
@@ -490,7 +528,7 @@
 
 .map-stop--selected .map-stop__halo {
   stroke: #f5c024;
-  stroke-width: 5;
+  stroke-width: 12;
 }
 
 .map-stop__dot {
@@ -499,13 +537,14 @@
 
 .map-stop__label {
   fill: #e4d9f3;
-  font-family: var(--font-display, Georgia, serif);
-  font-size: 34px;
+  font-family: var(--font-body, ui-sans-serif, system-ui, sans-serif);
+  font-size: 36px;
   font-weight: 600;
   letter-spacing: 0.01em;
   paint-order: stroke;
   stroke: #0c0816;
-  stroke-width: 7px;
+  stroke-width: 6px;
+  stroke-linejoin: round;
 }
 
 .map-stop__label--primary {
@@ -519,12 +558,6 @@
 
 .map-stop--billy .map-stop__label--primary {
   fill: #f2b705;
-}
-
-.map-stop__label-sub {
-  fill: #e0b183;
-  font-size: 26px;
-  font-weight: 600;
 }
 
 .map-stop--selected .map-stop__label,
@@ -549,7 +582,7 @@
 .map-bus__body {
   fill: #f2b705;
   stroke: #0c0816;
-  stroke-width: 3;
+  stroke-width: 4;
 }
 
 .map-bus__window {
@@ -600,31 +633,11 @@
 .map-north text {
   fill: #a99cbf;
   font-family: var(--font-body, ui-sans-serif, system-ui, sans-serif);
-  font-size: 24px;
+  font-size: 40px;
   font-weight: 600;
 }
 
 /* Shared map chrome ----------------------------------------------------- */
-
-.map-legend__item {
-  color: var(--text-3, #a99cbf);
-}
-
-.legend-line--active {
-  background: #f2b705;
-}
-
-.legend-line--inactive {
-  background: #4a3d63;
-}
-
-.legend-dot--ram {
-  background: #cabbea;
-}
-
-.legend-dot--billy {
-  background: #f2b705;
-}
 
 .map-offmap__chip {
   border: 1px solid var(--line-strong, rgba(220, 206, 245, 0.24));
@@ -646,10 +659,6 @@
   color: #f2b705;
 }
 
-.map-caption__billy strong {
-  color: #f2b705;
-}
-
 .map-loading {
   color: var(--text-3, #a99cbf);
 }
@@ -658,28 +667,60 @@
   color: var(--text-3, #a99cbf);
 }
 
-@media (max-width: 760px) {
-  .map-building-label--anchor {
-    display: none;
+/* One restrained line under the map: no loop legend, just the facts. */
+.map-statusline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 16px;
+  padding: 8px max(12px, env(safe-area-inset-left)) 2px;
+  color: var(--text-3);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.map-statusline p {
+  margin: 0;
+}
+
+.map-statusline strong {
+  color: var(--lavender);
+  font-weight: 600;
+}
+
+.map-statusline a {
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+
+.map-statusline a:hover {
+  text-decoration: underline;
+}
+
+@media (min-width: 900px) {
+  .map-statusline {
+    padding: 10px 4px 0;
   }
 }
 
 @media (max-width: 640px) {
   .scene-root {
-    --scene-inset-top: 112px;
+    --scene-inset-top: 68px;
     --scene-inset-right: 10px;
-    --scene-inset-bottom: 104px;
+    --scene-inset-bottom: 74px;
     --scene-inset-left: 10px;
   }
 }
 
 @media (max-width: 520px) {
-  .map-building-label--minor {
-    display: none;
+  .map-live__secondary {
+    display: block;
   }
 
-  .map-building-label {
-    font-size: 26px;
+  .map-live__primary {
+    font-size: 0.76rem;
   }
 
   .scene-label--stop {
@@ -694,32 +735,17 @@
     font-size: 10px;
     letter-spacing: 0.1em;
   }
-
-  .scene-label--place {
-    font-size: 9.5px;
-  }
 }
 
+/* Keep Follow/Campus/Route/Reset/Labels on one row at 390px. */
 @media (max-width: 430px) {
-  .scene-label__full {
-    display: none;
+  .map-hero__stage .map-camera {
+    gap: 1px;
+    padding: 3px;
   }
 
-  .scene-label__short {
-    display: inline;
-  }
-
-  .scene-label--stop {
-    gap: 5px;
-    padding: 4px 7px;
-  }
-
-  .map-stop__label {
-    font-size: 38px;
-  }
-
-  .map-building-label {
-    font-size: 30px;
+  .map-hero__stage .map-camera__button {
+    padding-inline: 9px;
   }
 }
 

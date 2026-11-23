@@ -1,6 +1,13 @@
-import { useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
+import {
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type RefObject,
+} from 'react';
 import * as THREE from 'three';
-import { STOPS, STOP_ORDER } from '../data/route';
+import { STOPS, STOP_ORDER, stopShortLabel } from '../data/route';
 import type { StopId } from '../data/types';
 import type { SceneCamera } from './contracts';
 import {
@@ -10,8 +17,7 @@ import {
   type LabelInsets,
   type LabelPlacement,
 } from './labelLayout';
-import { CATEGORY_ACCENT, PALETTE } from './palette';
-import { SCENE_PLACES } from './places';
+import { PALETTE } from './palette';
 import { STOP_ANCHOR_HEIGHT } from './StopMarkers';
 
 export interface SceneLabelInput {
@@ -31,30 +37,13 @@ export interface SceneLabelHandle {
 interface SceneLabelsProps {
   selectedStop: StopId | null;
   pinnedStops: StopId[];
-  camera: SceneCamera;
+  focusStop: StopId | null;
+  hoveredStop: StopId | null;
+  billyStop: StopId;
+  labelsVisible: boolean;
   reducedMotion: boolean;
   onSelectStop: (stop: StopId) => void;
   onCameraChange: (camera: SceneCamera) => void;
-}
-
-const MOBILE_LABEL: Record<StopId, string> = {
-  ramseyer: 'RAM',
-  akenson: 'Ake',
-  rosedale: 'Ros',
-  'lower-riley': 'Riley',
-  graham: 'Graham',
-  'brc-totino': 'BRC',
-  erickson: 'Erick',
-};
-
-/**
- * The 3D labels do not receive the day's Billy stop, so both shared-nickname
- * stops use their building names instead of printing "The Billy" twice.
- */
-function sceneStopLabel(id: StopId): string {
-  if (id === 'graham') return 'Graham';
-  if (id === 'brc-totino') return 'BRC / Totino';
-  return STOPS[id].shortName;
 }
 
 const EDGE_TEXT: Record<'north' | 'south' | 'east' | 'west', string> = {
@@ -64,8 +53,7 @@ const EDGE_TEXT: Record<'north' | 'south' | 'east' | 'west', string> = {
   west: 'Shuttle west ←',
 };
 
-const DEFAULT_INSETS: LabelInsets = { top: 64, right: 12, bottom: 92, left: 12 };
-const PLACE_LIMIT = 22;
+const DEFAULT_INSETS: LabelInsets = { top: 74, right: 12, bottom: 78, left: 12 };
 
 function readInsets(root: HTMLElement): LabelInsets {
   const style = getComputedStyle(root);
@@ -136,7 +124,10 @@ function applyStem(
 export function SceneLabels({
   selectedStop,
   pinnedStops,
-  camera,
+  focusStop,
+  hoveredStop,
+  billyStop,
+  labelsVisible,
   reducedMotion,
   onSelectStop,
   onCameraChange,
@@ -144,7 +135,6 @@ export function SceneLabels({
 }: SceneLabelsProps & { ref?: RefObject<SceneLabelHandle | null> }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const stopRefs = useRef(new Map<string, HTMLButtonElement>());
-  const placeRefs = useRef(new Map<string, HTMLDivElement>());
   const stemRefs = useRef(new Map<string, HTMLSpanElement>());
   const busRef = useRef<HTMLDivElement>(null);
   const edgeRef = useRef<HTMLButtonElement>(null);
@@ -169,9 +159,6 @@ export function SceneLabels({
     stopRefs.current.forEach((node, id) => {
       sizeMap.set(`stop:${id}`, { width: node.offsetWidth, height: node.offsetHeight });
     });
-    placeRefs.current.forEach((node, id) => {
-      sizeMap.set(`place:${id}`, { width: node.offsetWidth, height: node.offsetHeight });
-    });
     if (busRef.current) {
       sizeMap.set('bus', {
         width: busRef.current.offsetWidth,
@@ -188,7 +175,7 @@ export function SceneLabels({
 
   useLayoutEffect(() => {
     dirty.current = true;
-  }, [selectedStop, pinnedKey]);
+  }, [selectedStop, pinnedKey, focusStop, hoveredStop, labelsVisible, billyStop]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -212,11 +199,6 @@ export function SceneLabels({
         if (!root || input.width < 1 || input.height < 1) return;
 
         const { camera: sceneCamera, width, height } = input;
-        const compactViewport = width < 520;
-        if (root.dataset.compact !== String(compactViewport)) {
-          root.dataset.compact = String(compactViewport);
-          dirty.current = true;
-        }
         sceneCamera.updateMatrixWorld();
         sceneCamera.matrixWorldInverse.copy(sceneCamera.matrixWorld).invert();
 
@@ -257,21 +239,19 @@ export function SceneLabels({
                 y: bus.y,
                 width: size.width,
                 height: size.height,
-                gap: 54,
+                gap: 34,
                 required: true,
               });
               projected.set('bus', bus);
             }
-            if (!busOffscreen) {
-              obstacles.push({
-                id: 'obstacle:bus-body',
-                x: bus.x - 34,
-                y: bus.y - 20,
-                width: 68,
-                height: 40,
-                visible: true,
-              });
-            }
+            obstacles.push({
+              id: 'obstacle:bus-body',
+              x: bus.x - 32,
+              y: bus.y - 18,
+              width: 64,
+              height: 36,
+              visible: true,
+            });
           }
 
           if (busOffscreen) {
@@ -329,9 +309,21 @@ export function SceneLabels({
           }
         }
 
-        // Pinned and selected stops outrank the rest of the ground labels.
+        // Default label hierarchy: focus stop, selected stop, pinned stops and
+        // the stop under the pointer. Everything else stays a quiet beacon.
         const pinned = new Set(pinnedStops);
+        const labelStops = new Set<StopId>();
+        if (labelsVisible) {
+          for (const id of STOP_ORDER) labelStops.add(id);
+        } else {
+          if (focusStop) labelStops.add(focusStop);
+          if (selectedStop) labelStops.add(selectedStop);
+          for (const id of pinnedStops) labelStops.add(id);
+          if (hoveredStop) labelStops.add(hoveredStop);
+        }
+
         for (const id of STOP_ORDER) {
+          if (!labelStops.has(id)) continue;
           const stop = STOPS[id];
           const point = project(stop.x, STOP_ANCHOR_HEIGHT, stop.z);
           const size = sizes.current.get(`stop:${id}`);
@@ -346,62 +338,23 @@ export function SceneLabels({
           projected.set(`stop:${id}`, point);
           candidates.push({
             id: `stop:${id}`,
-            priority: selectedStop === id ? 900 : pinned.has(id) ? 850 : stop.primary ? 620 : 600,
+            priority:
+              id === hoveredStop
+                ? 960
+                : id === selectedStop
+                  ? 920
+                  : pinned.has(id)
+                    ? 880
+                    : id === focusStop
+                      ? 840
+                      : 640,
             x: point.x,
             y: point.y,
             width: size.width,
             height: size.height,
-            gap: 10,
+            gap: 12,
+            required: true,
           });
-        }
-
-        // Official building and landmark labels: only when there is real room.
-        const compact = width < 520;
-        const medium = width < 760;
-        const maxPlaces = compact ? 3 : medium ? 8 : PLACE_LIMIT;
-        const placeCandidates: {
-          candidate: LabelCandidate;
-          point: { x: number; y: number; behind: boolean };
-        }[] = [];
-
-        for (const place of SCENE_PLACES) {
-          if (compact && place.category !== 'landmark') continue;
-          const point = project(place.x, place.y, place.z);
-          const size = sizes.current.get(`place:${place.id}`);
-          if (!size || size.width <= 0 || point.behind) continue;
-          if (point.x < -40 || point.x > width + 40 || point.y < -40 || point.y > height + 40) {
-            continue;
-          }
-          const priority =
-            place.category === 'landmark'
-              ? 320
-              : place.category === 'athletic'
-                ? 260
-                : place.category === 'context'
-                  ? 180
-                  : 220;
-          placeCandidates.push({
-            candidate: {
-              id: `place:${place.id}`,
-              priority,
-              x: point.x,
-              y: point.y,
-              width: size.width,
-              height: size.height,
-              gap: 6,
-            },
-            point,
-          });
-        }
-
-        placeCandidates.sort(
-          (left, right) => right.candidate.priority - left.candidate.priority,
-        );
-        placeCandidates.length = Math.min(placeCandidates.length, maxPlaces);
-
-        for (const entry of placeCandidates) {
-          candidates.push(entry.candidate);
-          projected.set(entry.candidate.id, entry.point);
         }
 
         const placements = layoutLabels(candidates, width, height, insets.current, obstacles);
@@ -438,14 +391,13 @@ export function SceneLabels({
           const key = `stop:${id}`;
           const placement = byId.get(key);
           const anchor = projected.get(key);
-          const node = stopRefs.current.get(id) ?? null;
           const visible = Boolean(placement?.visible);
           applyNode(
-            node,
+            stopRefs.current.get(id) ?? null,
             visible,
             placement?.x ?? 0,
             placement?.y ?? 0,
-            selectedStop === id ? 8 : pinned.has(id) ? 7 : 6,
+            id === hoveredStop || id === selectedStop ? 8 : 7,
           );
           applyStem(
             stemRefs.current.get(key) ?? null,
@@ -453,29 +405,14 @@ export function SceneLabels({
             anchor?.x ?? 0,
             anchor?.y ?? 0,
             placement && placement.visible ? placement : null,
-            selectedStop === id || pinned.has(id) ? PALETTE.stopSelected : PALETTE.stop,
+            id === selectedStop || pinned.has(id) || id === hoveredStop
+              ? PALETTE.stopSelected
+              : PALETTE.stop,
           );
         }
-
-        for (const place of SCENE_PLACES) {
-          const key = `place:${place.id}`;
-          const placement = byId.get(key);
-          const anchor = projected.get(key);
-          applyNode(placeRefs.current.get(place.id) ?? null, Boolean(placement?.visible), placement?.x ?? 0, placement?.y ?? 0, 3);
-          applyStem(
-            stemRefs.current.get(key) ?? null,
-            Boolean(placement?.visible && anchor),
-            anchor?.x ?? 0,
-            anchor?.y ?? 0,
-            placement && placement.visible ? placement : null,
-            CATEGORY_ACCENT[place.category],
-          );
-        }
-
-        root.dataset.camera = camera;
       },
     }),
-    [camera, onSelectStop, pinnedKey, selectedStop, temps],
+    [hoveredStop, labelsVisible, pinnedKey, pinnedStops, selectedStop, focusStop, temps],
   );
 
   const pinned = new Set(pinnedStops);
@@ -505,18 +442,6 @@ export function SceneLabels({
               if (node) stemRefs.current.set(`stop:${id}`, node);
               return () => {
                 stemRefs.current.delete(`stop:${id}`);
-              };
-            }}
-          />
-        ))}
-        {SCENE_PLACES.map((place) => (
-          <span
-            key={`stem-place-${place.id}`}
-            className="scene-stem scene-stem--place"
-            ref={(node) => {
-              if (node) stemRefs.current.set(`place:${place.id}`, node);
-              return () => {
-                stemRefs.current.delete(`place:${place.id}`);
               };
             }}
           />
@@ -554,31 +479,10 @@ export function SceneLabels({
             onPointerDown={(event) => event.stopPropagation()}
           >
             <span className="scene-label__dot" aria-hidden="true" />
-            <span className="scene-label__full">{sceneStopLabel(id)}</span>
-            <span className="scene-label__short" aria-hidden="true">
-              {MOBILE_LABEL[id]}
-            </span>
+            <span className="scene-label__full">{stopShortLabel(id, billyStop)}</span>
           </button>
         );
       })}
-
-      {SCENE_PLACES.map((place) => (
-        <div
-          key={place.id}
-          ref={(node) => {
-            if (node) placeRefs.current.set(place.id, node);
-            return () => {
-                placeRefs.current.delete(place.id);
-              };
-          }}
-          className={`scene-label scene-label--place scene-label--${place.category}`}
-          data-hidden="true"
-          aria-hidden="true"
-        >
-          <span className="scene-label__mark" aria-hidden="true" />
-          <span className="scene-label__text">{place.shortName}</span>
-        </div>
-      ))}
 
       <div className="scene-label scene-label--bus" ref={busRef} data-hidden="true" aria-hidden="true">
         <span className="scene-label__beacon" aria-hidden="true" />
