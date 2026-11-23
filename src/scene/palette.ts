@@ -15,6 +15,8 @@ export interface BusAnchor {
  */
 export const PALETTE = {
   background: '#0a0713',
+  /** Slightly lifted indigo for the top-down plan; the night render keeps background. */
+  background2d: '#141021',
   fog: '#0f0a19',
   ground: '#0c0816',
   campus: '#1b1428',
@@ -34,10 +36,11 @@ export const PALETTE = {
   stopCore: '#1a1230',
   stopSelected: '#f2b705',
   stopPinned: '#e6bf63',
-  busBody: '#f2b705',
-  busBodyDark: '#2a1b3d',
-  busUpper: '#f6efe1',
-  busGlass: '#151024',
+  busBody: '#f4efe3',
+  busBodyDark: '#2b1a44',
+  busUpper: '#fbf7ee',
+  busGlass: '#1a0f32',
+  busAccent: '#e8b53c',
   busWheel: '#0b0812',
   busHub: '#9c8bb4',
   busHeadlight: '#ffe9c4',

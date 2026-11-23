@@ -281,6 +281,7 @@ body {
   position: relative;
   width: 100%;
   background: var(--bg-deep);
+  scroll-margin-top: calc(var(--header-height) + 8px);
 }
 
 .map-hero__stage {

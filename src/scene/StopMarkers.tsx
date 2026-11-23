@@ -22,8 +22,8 @@ interface StopMarkerProps {
  */
 function StopMarker({ stop, selected, pinned, hovered, onSelect, onHover }: StopMarkerProps) {
   const accent = selected || hovered ? PALETTE.stopSelected : pinned ? PALETTE.stopPinned : PALETTE.stop;
-  const radius = selected ? 11 : hovered ? 10 : 8;
-  const stemHeight = selected ? 24 : hovered ? 21 : 17;
+  const radius = selected ? 10 : hovered ? 9 : 8;
+  const stemHeight = selected ? 22 : hovered ? 20 : 17;
 
   return (
     <group position={[stop.x, 0, stop.z]}>
@@ -52,11 +52,11 @@ function StopMarker({ stop, selected, pinned, hovered, onSelect, onHover }: Stop
 
       {pinned && !selected ? (
         <mesh position-y={0.52} rotation-x={-Math.PI / 2}>
-          <ringGeometry args={[radius + 3.6, radius + 4.4, 36]} />
+          <ringGeometry args={[radius + 2.4, radius + 3.1, 36]} />
           <meshBasicMaterial
             color={PALETTE.stopPinned}
             transparent
-            opacity={0.34}
+            opacity={0.3}
             side={THREE.DoubleSide}
             depthWrite={false}
             toneMapped={false}

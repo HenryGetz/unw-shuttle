@@ -336,24 +336,25 @@ export function SceneLabels({
             point.y < height + 80;
           if (!visible) continue;
           projected.set(`stop:${id}`, point);
+          const priority =
+            id === selectedStop
+              ? 980
+              : id === hoveredStop
+                ? 960
+                : pinned.has(id)
+                  ? 900
+                  : id === focusStop
+                    ? 860
+                    : 640;
           candidates.push({
             id: `stop:${id}`,
-            priority:
-              id === hoveredStop
-                ? 960
-                : id === selectedStop
-                  ? 920
-                  : pinned.has(id)
-                    ? 880
-                    : id === focusStop
-                      ? 840
-                      : 640,
+            priority,
             x: point.x,
             y: point.y,
             width: size.width,
             height: size.height,
             gap: 12,
-            required: true,
+            required: priority >= 860,
           });
         }
 
@@ -405,9 +406,7 @@ export function SceneLabels({
             anchor?.x ?? 0,
             anchor?.y ?? 0,
             placement && placement.visible ? placement : null,
-            id === selectedStop || pinned.has(id) || id === hoveredStop
-              ? PALETTE.stopSelected
-              : PALETTE.stop,
+            pinned.has(id) ? PALETTE.stopPinned : PALETTE.stop,
           );
         }
       },

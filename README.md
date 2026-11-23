@@ -1,7 +1,7 @@
 # UNW Shuttle
 
-A map-first shuttle dashboard for the University of Northwestern – St. Paul.
-Read the next departure at a glance, follow the bus on the 2026 campus map, and
+A live-simulated shuttle dashboard for the University of Northwestern – St.
+Paul. Read the next bus at a glance, follow it around the 2026 campus map, and
 keep only the stops you actually use.
 
 [![UNW Shuttle preview](docs/preview.png)](https://henrygetz.github.io/unw-shuttle/)
@@ -13,17 +13,23 @@ right minute.
 ## What it does
 
 - **Your stops first.** RAM and The Billy start pinned, so a first visit has
-  countdowns immediately. Pick 1–3 stops or use a preset such as Dorm ↔ Main
-  Campus, Commuter / Rosedale, or Fine Arts / Library. Pins persist in
-  `localStorage`; the My Stops sheet lets you add, remove, and reorder them at
-  any time.
-- **A map-first layout.** The 3D campus diorama (or the always-available 2D
-  map) is the hero on desktop and mobile. Pinned countdowns sit directly below
-  the map, not after two screens of cards. On desktop the 2D map uses a
-  north/south atlas so stop labels stay legible without zooming.
+  minute-and-second countdowns immediately, including drop-off-only arrivals.
+  Pin up to 3 stops or use a preset such as Dorm ↔ Main Campus, Commuter /
+  Rosedale, or Fine Arts / Library. Pins persist in `localStorage`; the My Stops
+  sheet lets you add, remove, and reorder them at any time.
+- **A dashboard, not a page of cards.** On desktop, countdowns sit beside the
+  map so both stay in view. On phones the countdowns come first and the map
+  follows. Extra pins collect in a compact “Also pinned” rail.
+- **A real map with a moving bus.** Switch between a north-up 2D plan and a 3D
+  campus diorama. Overview frames the whole route; Follow tracks the shuttle,
+  including its off-map runs to Rosedale. Labels use a collision solver and
+  degrade to pinned, selected, and the current destination on small screens.
 - **A real timetable, honestly presented.** MWF, Tue–Thu, and finals service;
   the published route variants; request-only Ericksen; the final drop-off-only
   trip. The bus is a schedule simulation, not live GPS.
+- **A ride estimate.** Pick any two stops to see the next scheduled departure,
+  arrival, and duration, or the reason there is no scheduled ride (reverse
+  deadhead, request-only stop, or no more service today).
 - **Finals, weekends, and breaks.** The service calendar switches to the finals
   stop and explains why there is no daytime bus during recesses.
 - **Campus time, not browser time.** Every schedule calculation runs in
@@ -55,16 +61,15 @@ unw_shuttle_prefs_v1
 {
   version: 1,
   onboarded: boolean,
-  pinnedStops: StopId[],       // 1–3 unique published stops
+  pinnedStops: StopId[],       // 0–3 unique published stops
   viewMode: "3d" | "2d",
-  defaultCamera: "follow" | "campus" | "route"
+  defaultCamera: "overview" | "follow"
 }
 ```
 
-With no pins, the dashboard shows the next departure across all stops and a
-one-tap path to pick stops. Ericksen is request-only, so pinning or selecting it
-surfaces a `Call Public Safety · 651-631-5310` action. The app never invents a
-live vehicle position.
+The dashboard always shows RAM and The Billy; extra pins appear below the map.
+Ericksen is request-only, so pinning or selecting it surfaces a `Call Public
+Safety · 651-631-5310` action. The app never invents a live vehicle position.
 
 ## Schedule sources
 
@@ -93,8 +98,9 @@ Source caveats reflected in the app:
   matters.
 - The final regular trip and the final finals trip end with a **drop-off only**
   at BRC / Totino. There is no published departure time for that leg, so the
-  moving map estimates its arrival at +2 minutes. The countdowns never invent a
-  departure for it.
+  moving map estimates its arrival at +2 minutes. The dashboard counts that
+  arrival as a bus visit and labels it “Drops off”; it never invents a
+  departure or a ride from that stop.
 - The finals PDF prints the 11:00 row as **11:00 PM**. The surrounding rows are
   10:15 AM and 12:32 PM, so the app uses **11:00 AM** and flags the correction.
 - The evening shuttle runs **6:00 PM–12:00 AM** but has no timetable on the
@@ -127,9 +133,9 @@ geo-referenced tracing. The custom display face in
 for the brand wordmark and high-impact titles.
 
 Stop labels use a screen-space collision solver with leader stems: the live
-shuttle has first priority, pinned/selected stops second, and unpinned stops
-last. The labels are checked at desktop and phone widths across Follow, Campus,
-and Whole Route views.
+shuttle has first priority, selected and pinned stops next, and unpinned stops
+last. The labels are checked at desktop and phone widths across the 2D/3D
+overview and both Follow views.
 
 ## How it works
 
@@ -157,9 +163,11 @@ src/lib/time.ts             America/Chicago wall clock and formatting
   Between trips the bus is animated back to Ramseyer; the return leg is not a
   published trip and never affects a countdown.
 - The map geometry is baked. There is no Overpass/OSRM call at runtime.
-- The 2D SVG map and the 3D scene read the same route and campus JSON.
-- The 3D scene is lazy-loaded; the countdowns and the 2D map paint before the
-  Three.js chunk arrives.
+- Both the 2D plan and the 3D scene are the same Three.js campus, route, and
+  shuttle; the mode only changes the camera and lighting.
+- The scene is lazy-loaded. Countdowns and the rest of the dashboard paint
+  first; without WebGL, the page explains the limit and keeps every schedule
+  surface working.
 
 ## Tests
 
@@ -168,13 +176,15 @@ src/lib/time.ts             America/Chicago wall clock and formatting
 - service-day selection across MWF, Tue/Thu, finals, weekends, and closures;
 - trip counts, monotonic stop times, via/bypass selection;
 - the finals 11:00 PM typo correction;
-- countdowns, next-service rollover, finals Billy stop;
+- countdowns, drop-off-only visits, next-service rollover, finals Billy stop;
+- ride estimates for scheduled, reverse, request-only, and exhausted service;
 - bus phases, return-to-Ramseyer behavior, and route geometry;
+- 2D/3D overview framing and follow poses;
 - preference normalization, pin limits, and preset validity.
 
-The UI, onboarding, 2D mode, collision-free labels, and responsive layouts are
-also verified in Chromium with a real WebGL context at desktop and phone
-viewports.
+The UI, onboarding, both map modes, collision-free labels, and responsive
+layouts are also checked in Chromium with a real WebGL context at desktop and
+phone viewports.
 
 ## Deploy
 

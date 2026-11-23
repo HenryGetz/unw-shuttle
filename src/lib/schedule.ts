@@ -118,6 +118,41 @@ export function nextDeparture(now: Date, stopId: StopId): Departure | null {
   };
 }
 
+export interface StopVisit {
+  stopId: StopId;
+  trip: Trip;
+  atMinutes: number;
+  secondsUntil: number;
+  /** The bus stops only to let riders off, so this is an arrival, not a pickup. */
+  dropOffOnly: boolean;
+}
+
+function visitsForStop(service: ServiceDay, stopId: StopId): Omit<StopVisit, 'stopId' | 'secondsUntil'>[] {
+  return service.trips
+    .flatMap((trip) => {
+      const scheduled = trip.times[stopId];
+      const at = scheduled ?? trip.dropAt?.[stopId];
+      if (at === undefined) return [];
+      return [{ trip, atMinutes: at, dropOffOnly: scheduled === undefined }];
+    })
+    .sort((a, b) => a.atMinutes - b.atMinutes);
+}
+
+/** Every time the bus shows up at a stop, including drop-off-only arrivals. */
+export function nextVisits(now: Date, stopId: StopId, limit = 3): StopVisit[] {
+  const clock = campusClock(now);
+  const info = getServiceForDate(clock.dateKey);
+  if (!info.service) return [];
+  return visitsForStop(info.service, stopId)
+    .filter((entry) => entry.atMinutes * 60 >= clock.seconds)
+    .slice(0, limit)
+    .map((entry) => ({
+      ...entry,
+      stopId,
+      secondsUntil: entry.atMinutes * 60 - clock.seconds,
+    }));
+}
+
 export function nextDepartures(now: Date, stopId: StopId, limit = 3): Departure[] {
   const clock = campusClock(now);
   const info = getServiceForDate(clock.dateKey);

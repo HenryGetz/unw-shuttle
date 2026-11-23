@@ -1,7 +1,8 @@
 import type { StopId } from '../data/types';
+import type { CameraPreference, MapViewMode } from '../lib/prefs';
 import type { BusState } from '../lib/schedule';
 
-export type SceneCamera = 'follow' | 'campus' | 'route';
+export type SceneCamera = CameraPreference;
 
 export interface CampusSceneProps {
   bus: BusState;
@@ -9,6 +10,7 @@ export interface CampusSceneProps {
   selectedStop: StopId | null;
   pinnedStops: StopId[];
   labelsVisible: boolean;
+  viewMode: MapViewMode;
   camera: SceneCamera;
   resetToken: number;
   onSelectStop: (stop: StopId) => void;
@@ -16,9 +18,8 @@ export interface CampusSceneProps {
 }
 
 export const SCENE_CAMERA_LABEL: Record<SceneCamera, string> = {
+  overview: 'Overview',
   follow: 'Follow',
-  campus: 'Campus',
-  route: 'Route',
 };
 
 /**

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { CAMERA_FOV, presetPose } from './cameraPoses';
+import { CAMERA_FOV, overviewPose } from './cameraPoses';
 import { STOPS, STOP_ORDER } from '../data/route';
-import type { SceneCamera } from './contracts';
+import type { MapViewMode } from '../lib/prefs';
 import { layoutLabels, stemOrigin, type LabelCandidate, type LabelInsets } from './labelLayout';
 
 const INSETS: LabelInsets = { top: 112, right: 10, bottom: 104, left: 10 };
@@ -98,7 +98,7 @@ const VIEWPORTS: Array<[number, number]> = [
 ];
 
 function project(
-  mode: Exclude<SceneCamera, 'follow'>,
+  mode: MapViewMode,
   width: number,
   height: number,
   x: number,
@@ -106,7 +106,8 @@ function project(
   z: number,
 ): { x: number; y: number } {
   const camera = new THREE.PerspectiveCamera(CAMERA_FOV, width / height, 2, 20000);
-  const pose = presetPose(mode, camera, width / height);
+  if (mode === '2d') camera.up.set(0, 0, -1);
+  const pose = overviewPose(mode, camera, width / height);
   camera.position.copy(pose.position);
   camera.lookAt(pose.target);
   camera.updateMatrixWorld();
@@ -116,7 +117,7 @@ function project(
 }
 
 describe('scene label layout under the real camera presets', () => {
-  it.each(VIEWPORTS.flatMap(([width, height]) => (['campus', 'route'] as const).map((mode) => [width, height, mode] as const)))(
+  it.each(VIEWPORTS.flatMap(([width, height]) => (['2d', '3d'] as const).map((mode) => [width, height, mode] as const)))(
     'resolves every stop, bus and building label at %ix%i (%s)',
     (width, height, mode) => {
       const compact = width <= 430;

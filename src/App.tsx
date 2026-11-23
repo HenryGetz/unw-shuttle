@@ -5,6 +5,7 @@ import type { StopId } from './data/types';
 import { busStateAt, nextService, serviceInfoAt } from './lib/schedule';
 import { setDefaultCamera, setViewMode, skipOnboarding, useShuttlePrefs } from './lib/prefs';
 import { Header } from './components/Header';
+import { GlancePanel } from './components/GlancePanel';
 import { MapPanel } from './components/MapPanel';
 import { PinnedStops } from './components/PinnedStops';
 import { Onboarding } from './components/Onboarding';
@@ -14,6 +15,7 @@ import { AllSchedules } from './components/AllSchedules';
 import { GoodToKnow } from './components/GoodToKnow';
 import { Footer } from './components/Footer';
 import './styles/shell.css';
+import './styles/glance.css';
 
 export function App() {
   const now = useNow();
@@ -31,7 +33,26 @@ export function App() {
 
   const resetMap = () => {
     setResetToken((token) => token + 1);
-    setDefaultCamera('campus');
+    setDefaultCamera('overview');
+  };
+
+  // On phones the map sits below the countdowns, and any layout can select a
+  // stop from the below-fold schedule. Bring the map into view or nothing happens.
+  const selectStop = (stop: StopId | null) => {
+    setSelectedStop(stop);
+    if (!stop) return;
+    const map = document.querySelector('.map-hero');
+    if (!map) return;
+    const rect = map.getBoundingClientRect();
+    const header = document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0;
+    const visible = Math.max(
+      0,
+      Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, header + 8),
+    );
+    if (visible >= Math.min(rect.height, window.innerHeight - header - 16) * 0.5) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const top = window.scrollY + rect.top - header - 8;
+    window.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
   };
 
   return (
@@ -41,36 +62,49 @@ export function App() {
       </a>
       <Header info={info} onOpenMyStops={() => setMyStopsOpen(true)} />
       <main className="shell-main" id="main">
-        <MapPanel
-          now={now}
-          info={info}
-          bus={bus}
-          billyStop={billyStop}
-          selectedStop={selectedStop}
-          onSelectStop={setSelectedStop}
-          viewMode={prefs.viewMode}
-          onViewModeChange={setViewMode}
-          camera={prefs.defaultCamera}
-          onCameraChange={setDefaultCamera}
-          resetToken={resetToken}
-          onReset={resetMap}
-          pinnedStops={prefs.pinnedStops}
-        />
+        <div className="dashboard-hero">
+          <GlancePanel
+            now={now}
+            info={info}
+            bus={bus}
+            billyStop={billyStop}
+            pinnedStops={prefs.pinnedStops}
+            onSelectStop={selectStop}
+          />
+          <div className="dashboard-map">
+            <MapPanel
+              now={now}
+              info={info}
+              bus={bus}
+              billyStop={billyStop}
+              selectedStop={selectedStop}
+              onSelectStop={selectStop}
+              onClearStop={() => setSelectedStop(null)}
+              viewMode={prefs.viewMode}
+              onViewModeChange={setViewMode}
+              camera={prefs.defaultCamera}
+              onCameraChange={setDefaultCamera}
+              resetToken={resetToken}
+              onReset={resetMap}
+              pinnedStops={prefs.pinnedStops}
+            />
+          </div>
+        </div>
         <div className="shell-flow">
           <PinnedStops
             now={now}
             info={info}
             billyStop={billyStop}
             selectedStop={selectedStop}
-            onSelectStop={setSelectedStop}
-            onOpenMyStops={() => setMyStopsOpen(true)}
+            onSelectStop={selectStop}
+            excludeStops={['ramseyer', billyStop]}
           />
           <TodaySchedule
             now={now}
             info={info}
             billyStop={billyStop}
             selectedStop={selectedStop}
-            onSelectStop={setSelectedStop}
+            onSelectStop={selectStop}
           />
           <AllSchedules now={now} info={info} />
           <GoodToKnow />

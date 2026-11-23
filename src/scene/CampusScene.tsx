@@ -1,10 +1,12 @@
 import '../styles/map.css';
 import type { CSSProperties } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { StopId } from '../data/types';
+import type { MapViewMode } from '../lib/prefs';
 import { CameraRig } from './CameraRig';
+import { CAMERA_FOV } from './cameraPoses';
 import { CampusTerrain } from './CampusTerrain';
 import { busFocusStop, type CampusSceneProps } from './contracts';
 import { RouteOverlay } from './RouteOverlay';
@@ -58,6 +60,18 @@ const ROOT_STYLE: CSSProperties = {
   touchAction: 'pan-y',
 };
 
+/** The top-down plan reads lit; the 3D render keeps its nocturnal exposure. */
+function SceneExposure({ viewMode }: { viewMode: MapViewMode }) {
+  const gl = useThree((state) => state.gl);
+
+  useLayoutEffect(() => {
+    gl.toneMapping = THREE.ACESFilmicToneMapping;
+    gl.toneMappingExposure = viewMode === '2d' ? 1.4 : 1.28;
+  }, [gl, viewMode]);
+
+  return null;
+}
+
 function LabelProjector({
   anchor,
   busVisible,
@@ -110,7 +124,7 @@ function SceneFallback() {
             color: 'var(--text-4, #7e7194)',
           }}
         >
-          3D campus
+          Campus map
         </div>
         <div style={{ marginTop: 8, fontSize: 16, fontWeight: 650 }}>WebGL is unavailable</div>
         <div
@@ -121,8 +135,8 @@ function SceneFallback() {
             color: 'var(--text-3, #a99cbf)',
           }}
         >
-          This browser could not start the 3D map. Stop times and the shuttle schedule still work.
-          Enable hardware acceleration or switch to the 2D map.
+          This browser could not start the map. Countdowns, the live loop and the full timetable
+          still work. Enable hardware acceleration to restore it.
         </div>
       </div>
     </div>
@@ -135,6 +149,7 @@ export function CampusScene({
   selectedStop,
   pinnedStops,
   labelsVisible,
+  viewMode,
   camera,
   resetToken,
   onSelectStop,
@@ -146,34 +161,59 @@ export function CampusScene({
   const overlay = useRef<SceneLabelHandle | null>(null);
   const [hoveredStop, setHoveredStop] = useState<StopId | null>(null);
   const focusStop = busFocusStop(bus);
+  const is2d = viewMode === '2d';
+  const rootStyle = useMemo(
+    () => ({ ...ROOT_STYLE, background: is2d ? PALETTE.background2d : PALETTE.background }),
+    [is2d],
+  );
 
   if (!webgl) return <SceneFallback />;
 
   return (
-    <div style={ROOT_STYLE} className="scene-root">
+    <div style={rootStyle} className="scene-root">
       <Canvas
         className="scene-canvas"
         dpr={[1, 1.75]}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
-        camera={{ position: [540, 1180, 1760], fov: 44, near: 2, far: 20000 }}
+        camera={{ position: [540, 1180, 1760], fov: CAMERA_FOV, near: 2, far: 20000 }}
         style={{ touchAction: 'pan-y' }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
-          gl.toneMappingExposure = 1.1;
         }}
       >
-        <color attach="background" args={[PALETTE.background]} />
-        <fogExp2 attach="fog" args={[PALETTE.fog, 0.00008]} />
+        <color attach="background" args={[is2d ? PALETTE.background2d : PALETTE.background]} />
+        {!is2d && <fogExp2 attach="fog" args={[PALETTE.fog, 0.00008]} />}
 
-        <CameraRig anchor={anchor} mode={camera} resetToken={resetToken} />
+        <SceneExposure viewMode={viewMode} />
+        <CameraRig anchor={anchor} viewMode={viewMode} mode={camera} resetToken={resetToken} />
 
-        <ambientLight color="#a291c8" intensity={0.54} />
-        <hemisphereLight args={['#a897d0', '#0b0714', 0.68]} />
-        <directionalLight color="#e6dcff" intensity={2.1} position={[-760, 1120, 920]} />
-        <directionalLight color="#ffd9a8" intensity={0.6} position={[620, 420, -820]} />
-        <pointLight color="#ffb26b" intensity={520} distance={430} decay={2} position={[-60, 22, -470]} />
-        <pointLight color="#ff9d5c" intensity={340} distance={360} decay={2} position={[-30, 18, 250]} />
-        <pointLight color="#d9c2ff" intensity={220} distance={320} decay={2} position={[-200, 20, -40]} />
+        <ambientLight color={is2d ? '#b7a8dc' : '#a291c8'} intensity={is2d ? 1.2 : 0.78} />
+        <hemisphereLight
+          args={[is2d ? '#c3b4e6' : '#a897d0', is2d ? '#171022' : '#0b0714', is2d ? 1.1 : 0.88]}
+        />
+        <directionalLight color="#e6dcff" intensity={is2d ? 3.2 : 2.6} position={[-760, 1120, 920]} />
+        <directionalLight color="#ffd9a8" intensity={is2d ? 1 : 0.8} position={[620, 420, -820]} />
+        <pointLight
+          color="#ffb26b"
+          intensity={is2d ? 220 : 520}
+          distance={430}
+          decay={2}
+          position={[-60, 22, -470]}
+        />
+        <pointLight
+          color="#ff9d5c"
+          intensity={is2d ? 140 : 340}
+          distance={360}
+          decay={2}
+          position={[-30, 18, 250]}
+        />
+        <pointLight
+          color="#d9c2ff"
+          intensity={is2d ? 90 : 220}
+          distance={320}
+          decay={2}
+          position={[-200, 20, -40]}
+        />
 
         <CampusTerrain />
         <RouteOverlay activeRoute={bus.route.id} />

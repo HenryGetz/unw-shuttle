@@ -61,10 +61,12 @@ export function ShuttleBus({ bus, anchor, reducedMotion }: ShuttleBusProps) {
     if (!next.visible) return;
 
     const pulse = reducedMotion ? 0.35 : 0.35 + Math.sin(state.clock.elapsedTime * 1.6) * 0.25;
-    if (halo.current) halo.current.scale.setScalar(1 + pulse * 0.18);
-    if (haloMaterial.current) haloMaterial.current.opacity = reducedMotion ? 0.12 : 0.08 + pulse * 0.08;
+    if (halo.current) halo.current.scale.setScalar(1 + pulse * 0.04);
+    if (haloMaterial.current) {
+      haloMaterial.current.opacity = reducedMotion ? 0.3 : 0.26 + pulse * 0.06;
+    }
     if (beaconMaterial.current) {
-      beaconMaterial.current.emissiveIntensity = reducedMotion ? 0.9 : 0.5 + pulse * 0.9;
+      beaconMaterial.current.emissiveIntensity = reducedMotion ? 1 : 0.7 + pulse * 0.8;
     }
   });
 
@@ -75,38 +77,42 @@ export function ShuttleBus({ bus, anchor, reducedMotion }: ShuttleBusProps) {
       rotation-y={bus.heading}
       scale={2.4}
     >
-      <mesh rotation-x={-Math.PI / 2} position-y={0.06} scale={[2.1, 3.2, 1]} renderOrder={0}>
+      <mesh rotation-x={-Math.PI / 2} position-y={0.06} scale={[1.35, 2.1, 1]} renderOrder={0}>
         <circleGeometry args={[4.6, 28]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.16} depthWrite={false} />
+        <meshBasicMaterial color="#000000" transparent opacity={0.12} depthWrite={false} />
       </mesh>
-      <mesh rotation-x={-Math.PI / 2} position-y={0.07} scale={[1.5, 2.4, 1]} renderOrder={1}>
+      <mesh rotation-x={-Math.PI / 2} position-y={0.07} scale={[1, 1.5, 1]} renderOrder={1}>
         <circleGeometry args={[4.6, 28]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.28} depthWrite={false} />
+        <meshBasicMaterial color="#000000" transparent opacity={0.2} depthWrite={false} />
       </mesh>
 
       <mesh position-y={0.95}>
         <boxGeometry args={[2.45, 0.82, 8.2]} />
         <meshStandardMaterial
           color={PALETTE.busBody}
-          roughness={0.48}
-          metalness={0.22}
-          emissive="#3a2a02"
-          emissiveIntensity={0.22}
+          roughness={0.42}
+          metalness={0.18}
+          emissive="#241a3c"
+          emissiveIntensity={0.12}
         />
       </mesh>
       <mesh position-y={2.18}>
         <boxGeometry args={[2.55, 1.68, 8.3]} />
         <meshStandardMaterial
           color={PALETTE.busUpper}
-          roughness={0.5}
-          metalness={0.16}
-          emissive="#3d3427"
-          emissiveIntensity={0.28}
+          roughness={0.46}
+          metalness={0.14}
+          emissive="#2a2040"
+          emissiveIntensity={0.14}
         />
       </mesh>
       <mesh position-y={3.1}>
         <boxGeometry args={[2.35, 0.24, 7.9]} />
-        <meshStandardMaterial color={PALETTE.busBody} roughness={0.42} metalness={0.28} />
+        <meshStandardMaterial color={PALETTE.busBody} roughness={0.38} metalness={0.24} />
+      </mesh>
+      <mesh position={[0, 3.24, 0]}>
+        <boxGeometry args={[0.46, 0.04, 6.9]} />
+        <meshStandardMaterial color={PALETTE.busAccent} roughness={0.4} metalness={0.35} />
       </mesh>
 
       <mesh position={[0, 2.48, 0.1]}>
@@ -184,8 +190,8 @@ export function ShuttleBus({ bus, anchor, reducedMotion }: ShuttleBusProps) {
 
       {[-1.285, 1.285].map((x) => (
         <mesh key={`stripe-${x}`} position={[x, 1.62, 0]}>
-          <boxGeometry args={[0.04, 0.14, 7.4]} />
-          <meshStandardMaterial color={PALETTE.busBodyDark} roughness={0.55} metalness={0.3} />
+          <boxGeometry args={[0.04, 0.16, 7.4]} />
+          <meshStandardMaterial color={PALETTE.busAccent} roughness={0.45} metalness={0.35} />
         </mesh>
       ))}
 
@@ -207,28 +213,28 @@ export function ShuttleBus({ bus, anchor, reducedMotion }: ShuttleBusProps) {
         </group>
       ))}
 
-      <mesh position={[0, 3.32, 1.25]}>
-        <sphereGeometry args={[0.22, 10, 8]} />
+      <mesh position={[0, 3.28, 1.25]}>
+        <cylinderGeometry args={[0.5, 0.56, 0.06, 16]} />
+        <meshStandardMaterial color={PALETTE.busBodyDark} roughness={0.5} metalness={0.3} />
+      </mesh>
+      <mesh position={[0, 3.46, 1.25]}>
+        <sphereGeometry args={[0.28, 12, 10]} />
         <meshStandardMaterial
           ref={beaconMaterial}
           color={PALETTE.busBeacon}
           emissive={PALETTE.busBeacon}
           emissiveIntensity={1}
-          roughness={0.35}
+          roughness={0.3}
         />
-      </mesh>
-      <mesh position={[0, 3.24, 1.25]}>
-        <cylinderGeometry args={[0.16, 0.2, 0.1, 8]} />
-        <meshStandardMaterial color="#20262e" roughness={0.7} />
       </mesh>
 
       <mesh ref={halo} rotation-x={-Math.PI / 2} position-y={0.16}>
-        <ringGeometry args={[8.6, 9.6, 48]} />
+        <ringGeometry args={[3.7, 4.25, 48]} />
         <meshBasicMaterial
           ref={haloMaterial}
-          color={PALETTE.route}
+          color={PALETTE.busAccent}
           transparent
-          opacity={0.12}
+          opacity={0.3}
           side={THREE.DoubleSide}
           depthWrite={false}
           toneMapped={false}

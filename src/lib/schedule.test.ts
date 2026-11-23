@@ -6,7 +6,9 @@ import {
   busStateAt,
   getServiceForDate,
   nextDeparture,
+  nextDepartures,
   nextService,
+  nextVisits,
   pointAtDistance,
   routeForTrip,
   timedStops,
@@ -140,6 +142,20 @@ describe('departures', () => {
   it('returns null after the last departure', () => {
     expect(nextDeparture(at('2026-11-23T21:21:00Z'), 'ramseyer')).toBeNull();
     expect(nextDeparture(at('2026-11-28T18:00:00Z'), 'ramseyer')).toBeNull();
+  });
+
+  it('counts a drop-off arrival as the bus visiting the stop', () => {
+    const late = at('2026-11-23T21:08:00Z');
+    expect(nextDepartures(late, 'brc-totino')).toHaveLength(0);
+
+    const visits = nextVisits(late, 'brc-totino');
+    expect(visits[0]?.trip.id).toBe('mwf-14');
+    expect(visits[0]?.atMinutes).toBe(15 * 60 + 22);
+    expect(visits[0]?.secondsUntil).toBe(14 * 60);
+    expect(visits[0]?.dropOffOnly).toBe(true);
+
+    expect(nextVisits(late, 'ramseyer')[0]?.atMinutes).toBe(15 * 60 + 11);
+    expect(nextVisits(late, 'ramseyer')[0]?.dropOffOnly).toBe(false);
   });
 
   it('finds the next service day', () => {

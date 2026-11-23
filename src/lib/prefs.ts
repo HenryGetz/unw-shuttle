@@ -6,7 +6,7 @@ export const PREFS_KEY = 'unw_shuttle_prefs_v1';
 export const MAX_PINNED_STOPS = 3;
 
 export type MapViewMode = '3d' | '2d';
-export type CameraPreference = 'follow' | 'campus' | 'route';
+export type CameraPreference = 'overview' | 'follow';
 
 export interface ShuttlePrefs {
   version: 1;
@@ -56,8 +56,8 @@ export const DEFAULT_PREFS: ShuttlePrefs = {
   // The dashboard exists for these two stops; skipping onboarding must not
   // leave a first-time visitor without a countdown.
   pinnedStops: ['ramseyer', 'brc-totino'],
-  viewMode: '3d',
-  defaultCamera: 'campus',
+  viewMode: '2d',
+  defaultCamera: 'overview',
 };
 
 const VALID_STOPS = new Set<StopId>(STOP_ORDER);
@@ -84,10 +84,7 @@ function normalizePrefs(value: unknown): ShuttlePrefs {
     onboarded: raw.onboarded === true,
     pinnedStops: normalizePinnedStops(raw.pinnedStops),
     viewMode: raw.viewMode === '2d' ? '2d' : '3d',
-    defaultCamera:
-      raw.defaultCamera === 'follow' || raw.defaultCamera === 'route'
-        ? raw.defaultCamera
-        : 'campus',
+    defaultCamera: raw.defaultCamera === 'follow' ? 'follow' : 'overview',
   };
 }
 

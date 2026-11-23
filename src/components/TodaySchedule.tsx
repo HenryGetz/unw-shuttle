@@ -2,14 +2,9 @@ import { useState } from 'react';
 import type { StopId } from '../data/types';
 import { RAM_STOP, STOPS, stopShortLabel } from '../data/route';
 import { SCHEDULE_SOURCE } from '../data/schedule';
-import {
-  departuresForStop,
-  nextDepartures,
-  routeForTrip,
-  tripWindow,
-} from '../lib/schedule';
+import { departuresForStop, nextVisits, tripWindow } from '../lib/schedule';
 import type { ServiceSnapshot } from '../lib/schedule';
-import { formatDateKey, formatRelative, formatTime } from '../lib/time';
+import { formatDateKey, formatTime } from '../lib/time';
 import { MAX_PINNED_STOPS, togglePinnedStop, useShuttlePrefs } from '../lib/prefs';
 import { NextServiceNote } from './NextServiceNote';
 import { ScheduleTable, columnsForService } from './ScheduleTable';
@@ -39,10 +34,11 @@ export function TodaySchedule({
   const explorerStop = selectedStop ?? stopFilter;
   const columns = columnsForService(service?.kind ?? 'mwf', billyStop);
   const stopInfo = STOPS[explorerStop];
-  const upcoming = service ? nextDepartures(now, explorerStop, 3) : [];
-  const next = upcoming[0] ?? null;
   const entries = service ? departuresForStop(service, explorerStop) : [];
   const lastEntry = entries[entries.length - 1] ?? null;
+  const nextEntry =
+    entries.find((entry) => entry.atMinutes * 60 >= info.clock.seconds) ?? null;
+  const nextVisit = nextVisits(now, explorerStop, 1)[0] ?? null;
   // Regular Ericksen trips carry no scheduled time; the driver is called instead.
   const implicitEricksenRequest =
     explorerStop === 'erickson' && service !== null && service.kind !== 'finals';
@@ -72,7 +68,39 @@ export function TodaySchedule({
     onSelectStop(null);
   };
 
-  const route = next ? routeForTrip(next.trip) : null;
+  const billyMoved =
+    service?.kind === 'finals' && billyStop !== 'brc-totino' && explorerStop === 'brc-totino';
+  const statusNote = nextEntry !== null ? null : !service ? (
+    <p className="sched-status__note">
+      <strong>No daytime shuttle today.</strong> {info.reason ?? 'No scheduled daytime service.'}{' '}
+      Evening shuttle hours are {SCHEDULE_SOURCE.eveningWindow}. Call {SCHEDULE_SOURCE.phone} to
+      confirm break or holiday service.
+    </p>
+  ) : requestOnly ? (
+    <p className="sched-status__note">
+      <strong>Request only.</strong> No scheduled departure at this stop. Call{' '}
+      <a className="sched-status__tel" href="tel:6516315310">
+        651-631-5310
+      </a>{' '}
+      to arrange a pickup.
+    </p>
+  ) : entries.length === 0 ? (
+    <p className="sched-status__note">
+      <strong>Not on today&apos;s timetable.</strong> Other stops are still running.
+    </p>
+  ) : nextEntry === null && nextVisit?.dropOffOnly ? (
+    <p className="sched-status__note">
+      <strong>Drop-off only.</strong> No more pickups here today. The bus still stops at{' '}
+      {formatTime(nextVisit.atMinutes)}.
+    </p>
+  ) : nextEntry === null ? (
+    <p className="sched-status__note">
+      <strong>Done for today.</strong>{' '}
+      {lastEntry ? `Last departure was ${formatTime(lastEntry.atMinutes)}.` : 'Service has ended.'}
+    </p>
+  ) : null;
+  // Request-only stops have no scheduled trip to roll over to.
+  const showNextService = !requestOnly && nextEntry === null && nextVisit === null;
 
   return (
     <section className="panel sched-board" aria-labelledby="today-title">
@@ -128,125 +156,81 @@ export function TodaySchedule({
         ))}
       </div>
 
-      <div className="sched-next">
-        <div className="sched-next__head">
-          <div className="sched-next__id">
-            <p className="sched-next__label">Next up</p>
-            <h3 className="sched-next__stop">{stopInfo.name}</h3>
-            <p className="sched-next__sub">{stopInfo.subtitle}</p>
-          </div>
-          <div className="sched-next__actions">
-            {explorerStop === 'erickson' && (
-              <a className="sched-call-pill" href="tel:6516315310">
-                <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-                  <path
-                    d="M5.2 3.5h2.3l1.2 3-1.6 1.3a10 10 0 004.1 4.1l1.3-1.6 3 1.2v2.3a1.7 1.7 0 01-1.9 1.7A12.2 12.2 0 013.5 5.4a1.7 1.7 0 011.7-1.9z"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                Call 651-631-5310
-              </a>
-            )}
-            <button
-              type="button"
-              className="sched-pin"
-              aria-pressed={isPinned}
-              disabled={pinFull}
-              title={pinTitle}
-              aria-label={
-                pinFull
-                  ? pinTitle
-                  : `${isPinned ? 'Unpin' : 'Pin'} ${stopShortLabel(explorerStop, billyStop)} to the top of the page`
-              }
-              onClick={() => togglePinnedStop(explorerStop)}
-            >
-              <svg className="sched-pin__star" viewBox="0 0 20 20" aria-hidden="true">
+      <div className="sched-toolbar">
+        <div className="sched-toolbar__id">
+          <p className="sched-toolbar__stop">{stopInfo.name}</p>
+          <p className="sched-toolbar__sub">{stopInfo.subtitle}</p>
+        </div>
+        <div className="sched-toolbar__actions">
+          {explorerStop === 'erickson' && (
+            <a className="sched-call-pill" href="tel:6516315310">
+              <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
                 <path
-                  d="M10 2.8l2.2 4.5 5 .7-3.6 3.5.9 5L10 14l-4.5 2.5.9-5L2.8 8l5-.7z"
-                  fill={isPinned ? 'currentColor' : 'none'}
+                  d="M5.2 3.5h2.3l1.2 3-1.6 1.3a10 10 0 004.1 4.1l1.3-1.6 3 1.2v2.3a1.7 1.7 0 01-1.9 1.7A12.2 12.2 0 013.5 5.4a1.7 1.7 0 011.7-1.9z"
+                  fill="none"
                   stroke="currentColor"
                   strokeWidth="1.4"
                   strokeLinejoin="round"
                 />
               </svg>
-              <span>{isPinned ? 'Pinned' : 'Pin to top'}</span>
+              Call 651-631-5310
+            </a>
+          )}
+          <button
+            type="button"
+            className="sched-pin"
+            aria-pressed={isPinned}
+            disabled={pinFull}
+            title={pinTitle}
+            aria-label={
+              pinFull
+                ? pinTitle
+                : `${isPinned ? 'Unpin' : 'Pin'} ${stopShortLabel(explorerStop, billyStop)} to the top of the page`
+            }
+            onClick={() => togglePinnedStop(explorerStop)}
+          >
+            <svg className="sched-pin__star" viewBox="0 0 20 20" aria-hidden="true">
+              <path
+                d="M10 2.8l2.2 4.5 5 .7-3.6 3.5.9 5L10 14l-4.5 2.5.9-5L2.8 8l5-.7z"
+                fill={isPinned ? 'currentColor' : 'none'}
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>{isPinned ? 'Pinned' : 'Pin to top'}</span>
+          </button>
+          {selectedStop !== null && (
+            <button
+              type="button"
+              className="sched-clear"
+              onClick={clearSelection}
+              aria-label="Clear selected stop"
+            >
+              Clear
             </button>
-            {selectedStop !== null && (
-              <button
-                type="button"
-                className="sched-clear"
-                onClick={clearSelection}
-                aria-label="Clear selected stop"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="sched-next__body">
-          {upcoming.length > 0 && next ? (
-            <>
-              <p className="sched-next__when">
-                <span className="sched-next__time">{formatTime(next.atMinutes)}</span>
-                <span className="sched-next__countdown">in {formatRelative(next.secondsUntil)}</span>
-                {route && (
-                  <span className={`sched-next__route sched-next__route--${route.id}`}>
-                    {route.id === 'via' ? 'Via Rosedale' : 'Campus loop'}
-                  </span>
-                )}
-              </p>
-              {upcoming.length > 1 && (
-                <ol className="sched-next__later" aria-label="Later departures">
-                  {upcoming.slice(1).map((departure) => (
-                    <li key={departure.trip.id}>
-                      <span className="sched-next__later-time">
-                        {formatTime(departure.atMinutes)}
-                      </span>
-                      <span>{formatRelative(departure.secondsUntil)}</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </>
-          ) : !service ? (
-            <div className="sched-next__off">
-              <p className="sched-next__note">
-                <strong>No daytime shuttle today.</strong>{' '}
-                {info.reason ?? 'No scheduled daytime service.'}
-              </p>
-              <p className="sched-next__note">
-                Evening shuttle hours are {SCHEDULE_SOURCE.eveningWindow}. Call{' '}
-                {SCHEDULE_SOURCE.phone} to confirm break or holiday service.
-              </p>
-              <NextServiceNote now={now} stopId={explorerStop} label="Next daytime service" />
-            </div>
-          ) : requestOnly ? (
-            <p className="sched-next__note">
-              <strong>Request only.</strong> No scheduled departure at this stop. Call{' '}
-              <a className="sched-next__tel" href="tel:6516315310">
-                651-631-5310
-              </a>{' '}
-              to arrange a pickup.
-            </p>
-          ) : (
-            <div className="sched-next__off">
-              <p className="sched-next__note">
-                <strong>
-                  {entries.length > 0 ? 'Done for today' : "Not on today's timetable"}
-                </strong>{' '}
-                {entries.length > 0 && lastEntry
-                  ? `Last departure was ${formatTime(lastEntry.atMinutes)}.`
-                  : 'Other stops are still running.'}
-              </p>
-              <NextServiceNote now={now} stopId={explorerStop} />
-            </div>
           )}
         </div>
       </div>
+
+      {(statusNote || billyMoved) && (
+        <div className="sched-status">
+          {statusNote}
+          {billyMoved && (
+            <p className="sched-status__note">
+              <strong>Finals week.</strong> The Billy is at {STOPS[billyStop].name}; this BRC /
+              Totino stop keeps its own timetable.
+            </p>
+          )}
+          {showNextService && (
+            <NextServiceNote
+              now={now}
+              stopId={explorerStop}
+              label={service ? undefined : 'Next daytime service'}
+            />
+          )}
+        </div>
+      )}
 
       {service &&
         (showGrid ? (
@@ -254,7 +238,7 @@ export function TodaySchedule({
             <ScheduleTable
               service={service}
               caption={`${service.label} shuttle timetable for ${date}`}
-              highlightTripId={next?.trip.id ?? null}
+              highlightTripId={nextEntry?.trip.id ?? null}
               billyStop={billyStop}
             />
             <p className="table-hint">Swipe the grid sideways for every stop.</p>

@@ -1,4 +1,4 @@
-/* 3D scene overlays and the nocturnal 2D campus map. Owned by the map slice. */
+/* Scene overlays and map chrome. The WebGL scene serves both 2D and 3D. */
 
 /* Scene label layer ------------------------------------------------------ */
 
@@ -73,11 +73,12 @@
   align-items: center;
   gap: 6px;
   min-height: 26px;
+  max-width: min(240px, calc(100% - 24px));
   padding: 4px 9px;
-  border: 1px solid rgba(202, 187, 234, 0.26);
+  border: 1px solid rgba(210, 196, 240, 0.32);
   border-radius: 999px;
-  background: rgba(15, 10, 24, 0.84);
-  color: #e4d9f3;
+  background: rgba(18, 13, 30, 0.86);
+  color: #efe7fb;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.015em;
@@ -89,6 +90,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.scene-label__full {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Keep the compact pill look while giving touch the full 44px target. */
 .scene-label--stop::after {
   content: '';
@@ -98,7 +105,8 @@
 }
 
 .scene-label--stop:hover {
-  border-color: rgba(242, 183, 5, 0.55);
+  border-color: rgba(233, 222, 252, 0.6);
+  background: rgba(30, 21, 46, 0.94);
   color: #fff;
 }
 
@@ -122,8 +130,9 @@
 
 .scene-label--stop.is-pinned {
   border-color: rgba(242, 183, 5, 0.68);
+  background: rgba(16, 11, 27, 0.9);
   box-shadow:
-    0 0 0 2px rgba(242, 183, 5, 0.2),
+    0 0 0 1px rgba(242, 183, 5, 0.16),
     0 6px 18px rgba(4, 1, 10, 0.5);
 }
 
@@ -133,16 +142,21 @@
 }
 
 .scene-label--stop.is-selected {
-  border-color: var(--gold-bright, #f5c024);
-  background: linear-gradient(180deg, #f5c024, #e8ad00);
-  color: #1a0f2e;
+  border: 1.5px solid #ece1ff;
+  background: #2e1b46;
+  color: #fff;
   box-shadow:
-    0 0 0 3px rgba(242, 183, 5, 0.26),
-    0 8px 20px rgba(4, 1, 10, 0.5);
+    0 0 0 2px rgba(46, 27, 70, 0.62),
+    0 0 0 3px rgba(236, 225, 255, 0.16),
+    0 8px 20px rgba(4, 1, 10, 0.52);
+}
+
+.scene-label--stop.is-selected:hover {
+  border-color: #fff;
 }
 
 .scene-label--stop.is-selected .scene-label__dot {
-  background: #1a0f2e;
+  background: #ece1ff;
   opacity: 1;
 }
 
@@ -150,21 +164,21 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 27px;
-  padding: 0 11px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.92);
   border-radius: 999px;
-  background: linear-gradient(180deg, #f7cd3f, #f2b705);
-  color: #241703;
+  background: #fdfbf6;
+  color: #180f26;
   font-family: var(--font-body, ui-sans-serif, system-ui, sans-serif);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.01em;
   line-height: 1;
-  text-transform: uppercase;
   pointer-events: none;
   box-shadow:
-    0 0 0 3px rgba(242, 183, 5, 0.2),
-    0 10px 24px rgba(4, 1, 10, 0.56);
+    0 2px 10px rgba(3, 1, 8, 0.55),
+    0 0 0 1px rgba(12, 6, 22, 0.35);
 }
 
 .scene-label__beacon {
@@ -172,8 +186,8 @@
   height: 6px;
   flex: none;
   border-radius: 50%;
-  background: #fff8e1;
-  box-shadow: 0 0 0 2px rgba(26, 15, 46, 0.18);
+  background: #f2b705;
+  box-shadow: 0 0 0 2px rgba(24, 15, 38, 0.16);
 }
 
 .scene-label--edge {
@@ -732,12 +746,12 @@
   .scene-label--bus {
     height: 25px;
     padding: 0 9px;
-    font-size: 10px;
-    letter-spacing: 0.1em;
+    font-size: 10.5px;
+    letter-spacing: 0.01em;
   }
 }
 
-/* Keep Follow/Campus/Route/Reset/Labels on one row at 390px. */
+/* Keep Overview/Follow/Reset/Labels on one row at 390px. */
 @media (max-width: 430px) {
   .map-hero__stage .map-camera {
     gap: 1px;

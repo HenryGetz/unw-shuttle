@@ -1,7 +1,7 @@
 import type { ServiceDay, ServiceKind, StopId, Trip } from '../data/types';
 import { BILLY_FINALS_STOP, BILLY_REGULAR_STOP, STOPS, STOP_ORDER, stopShortLabel } from '../data/route';
 import { routeForTrip, tripWindow } from '../lib/schedule';
-import { formatTime } from '../lib/time';
+import { formatRelative, formatTime } from '../lib/time';
 
 interface TimetableListProps {
   service: ServiceDay;
@@ -145,15 +145,22 @@ export function TimetableList({ service, stopId, clockSeconds }: TimetableListPr
           ]
             .filter(Boolean)
             .join(' ');
+          const countdown =
+            row.isNext && row.atMinutes !== null
+              ? `in ${formatRelative(row.atMinutes * 60 - clockSeconds)}`
+              : null;
 
           return (
             <li key={row.trip.id}>
               <details className={classes}>
                 <summary
                   className="trip-row__summary"
-                  aria-label={[`Trip ${row.index + 1} of ${service.trips.length}`, time, routeLabel, ...badges].join('. ')}
+                  aria-label={[`Trip ${row.index + 1} of ${service.trips.length}`, time, ...(countdown ? [countdown] : []), routeLabel, ...badges].join('. ')}
                 >
-                  <span className="trip-row__time">{time}</span>
+                  <span className="trip-row__time">
+                    {time}
+                    {countdown && <span className="trip-row__countdown">{countdown}</span>}
+                  </span>
                   <span className="trip-row__body">
                     <span className="trip-row__title">Trip {row.index + 1}</span>
                     <span className="trip-row__meta">

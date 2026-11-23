@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { STOPS, STOP_ORDER, stopShortLabel } from '../data/route';
+import { STOPS, stopShortLabel } from '../data/route';
 import type { StopId, Trip } from '../data/types';
 import {
   departuresForStop,
@@ -9,7 +9,7 @@ import {
   routeForTrip,
   tripWindow,
 } from '../lib/schedule';
-import type { Departure, NextService, ServiceSnapshot } from '../lib/schedule';
+import type { ServiceSnapshot } from '../lib/schedule';
 import { formatCountdown, formatDateKey, formatTime } from '../lib/time';
 import { useShuttlePrefs } from '../lib/prefs';
 import { CallSafety } from './prefs/CallSafety';
@@ -21,7 +21,7 @@ export interface PinnedStopsProps {
   billyStop: StopId;
   selectedStop: StopId | null;
   onSelectStop: (stop: StopId) => void;
-  onOpenMyStops: () => void;
+  excludeStops?: readonly StopId[];
 }
 
 const ROUTE_LABEL = { via: 'Via Rosedale', bypass: 'Campus loop' } as const;
@@ -233,108 +233,16 @@ function PinCard({ stopId, now, info, selected, billyStop, onSelect }: PinCardPr
   );
 }
 
-interface EmptyStopsProps {
-  now: Date;
-  info: ServiceSnapshot;
-  onSelectStop: (stop: StopId) => void;
-  onOpenMyStops: () => void;
-}
-
-function nextAnywhere(now: Date): { stopId: StopId; departure: Departure } | null {
-  let best: { stopId: StopId; departure: Departure } | null = null;
-  for (const stopId of STOP_ORDER) {
-    const departure = nextDeparture(now, stopId);
-    if (!departure) continue;
-    if (!best || departure.secondsUntil < best.departure.secondsUntil) {
-      best = { stopId, departure };
-    }
-  }
-  return best;
-}
-
-function nextServiceAnywhere(now: Date): { stopId: StopId; next: NextService } | null {
-  let best: { stopId: StopId; next: NextService } | null = null;
-  for (const stopId of STOP_ORDER) {
-    const next = nextService(now, stopId);
-    if (!next) continue;
-    if (!best || next.first.secondsUntil < best.next.first.secondsUntil) {
-      best = { stopId, next };
-    }
-  }
-  return best;
-}
-
-function EmptyStops({ now, info, onSelectStop, onOpenMyStops }: EmptyStopsProps) {
-  const departing = nextAnywhere(now);
-  const upcoming = departing ? null : nextServiceAnywhere(now);
-
-  return (
-    <div className="pin-empty">
-      <div className="pin-empty__head">
-        <p className="pin-empty__eyebrow">Next shuttle departing</p>
-        <span className="pin-empty__badge">All {STOP_ORDER.length} stops</span>
-      </div>
-
-      {departing ? (
-        <button
-          type="button"
-          className="pin-empty__row"
-          onClick={() => onSelectStop(departing.stopId)}
-          aria-label={`Next shuttle: ${STOPS[departing.stopId].name}, departs ${formatTime(
-            departing.departure.atMinutes,
-          )}, ${spokenEta(departing.departure.secondsUntil)}. Select this stop.`}
-        >
-          <span className="pin-empty__text">
-            <span className="pin-empty__stop">{STOPS[departing.stopId].name}</span>
-            <span className="pin-empty__meta">
-              {formatTime(departing.departure.atMinutes)} · {routeLabel(departing.departure.trip)}
-            </span>
-          </span>
-          <span className="pin-empty__count">
-            {formatCountdown(departing.departure.secondsUntil)}
-          </span>
-        </button>
-      ) : (
-        <div className="pin-empty__off">
-          <p className="pin-empty__stop">
-            {upcoming ? (info.service ? 'No more departures today' : 'No daytime service today') : 'No scheduled departures'}
-          </p>
-          {upcoming ? (
-            <p className="pin-empty__meta">
-              Next service{' '}
-              {upcoming.next.daysAhead === 0
-                ? 'today'
-                : upcoming.next.daysAhead === 1
-                  ? 'tomorrow'
-                  : formatDateKey(upcoming.next.dateKey)}{' '}
-              at {formatTime(upcoming.next.first.atMinutes)} · {STOPS[upcoming.stopId].name}
-            </p>
-          ) : (
-            <p className="pin-empty__meta">Check the published schedule for dates further out.</p>
-          )}
-          {info.reason && <p className="pin-empty__reason">{info.reason}</p>}
-        </div>
-      )}
-
-      <p className="pin-empty__hint">
-        Published timetable across all {STOP_ORDER.length} stops · no live GPS.
-      </p>
-      <button type="button" className="pin-empty__cta" onClick={onOpenMyStops}>
-        Choose my stops
-      </button>
-    </div>
-  );
-}
-
 export function PinnedStops({
   now,
   info,
   billyStop,
   selectedStop,
   onSelectStop,
-  onOpenMyStops,
+  excludeStops = [],
 }: PinnedStopsProps) {
-  const { pinnedStops } = useShuttlePrefs();
+  const { pinnedStops: savedStops } = useShuttlePrefs();
+  const pinnedStops = savedStops.filter((stopId) => !excludeStops.includes(stopId));
   const headingId = useId();
   const railRef = useRef<HTMLDivElement | null>(null);
   const [activeDot, setActiveDot] = useState(0);
@@ -378,62 +286,50 @@ export function PinnedStops({
     });
   };
 
+  if (count === 0) return null;
+
   return (
     <section className="pin-section" aria-labelledby={headingId}>
       <header className="pin-head">
         <div className="pin-head__text">
-          <p className="pin-head__eyebrow">At a glance</p>
+          <p className="pin-head__eyebrow">Also pinned</p>
           <h2 className="pin-head__title" id={headingId}>
-            {count > 0 ? 'Your stops' : 'Next shuttle'}
+            Your other stops
           </h2>
         </div>
-        <button type="button" className="pin-head__edit" onClick={onOpenMyStops}>
-          {count > 0 ? 'Edit stops' : 'My stops'}
-        </button>
       </header>
 
-      {count === 0 ? (
-        <EmptyStops
-          now={now}
-          info={info}
-          onSelectStop={onSelectStop}
-          onOpenMyStops={onOpenMyStops}
-        />
-      ) : (
-        <>
-          <div
-            ref={railRef}
-            className="pin-cards"
-            data-count={count}
-            onScroll={showDots ? handleScroll : undefined}
-          >
-            {pinnedStops.map((stopId) => (
-              <PinCard
-                key={stopId}
-                stopId={stopId}
-                now={now}
-                info={info}
-                selected={selectedStop === stopId}
-                billyStop={billyStop}
-                onSelect={onSelectStop}
-              />
-            ))}
-          </div>
-          {showDots && (
-            <div className="pin-dots" role="group" aria-label="Pinned stop cards">
-              {pinnedStops.map((stopId, index) => (
-                <button
-                  key={stopId}
-                  type="button"
-                  className="pin-dot"
-                  onClick={() => scrollToCard(index)}
-                  aria-label={`Show ${STOPS[stopId].name}`}
-                  aria-current={index === activeIndex ? 'true' : undefined}
-                />
-              ))}
-            </div>
-          )}
-        </>
+      <div
+        ref={railRef}
+        className="pin-cards"
+        data-count={count}
+        onScroll={showDots ? handleScroll : undefined}
+      >
+        {pinnedStops.map((stopId) => (
+          <PinCard
+            key={stopId}
+            stopId={stopId}
+            now={now}
+            info={info}
+            selected={selectedStop === stopId}
+            billyStop={billyStop}
+            onSelect={onSelectStop}
+          />
+        ))}
+      </div>
+      {showDots && (
+        <div className="pin-dots" role="group" aria-label="Pinned stop cards">
+          {pinnedStops.map((stopId, index) => (
+            <button
+              key={stopId}
+              type="button"
+              className="pin-dot"
+              onClick={() => scrollToCard(index)}
+              aria-label={`Show ${STOPS[stopId].name}`}
+              aria-current={index === activeIndex ? 'true' : undefined}
+            />
+          ))}
+        </div>
       )}
     </section>
   );
