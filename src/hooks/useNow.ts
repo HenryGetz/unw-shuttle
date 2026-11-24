@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 
 /** Wall clock that ticks on second boundaries. All schedule math runs off this Date. */
-export function useNow(): Date {
+export function useNow(paused = false): Date {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
+    if (paused) return;
     let timer = 0;
 
     const tick = () => {
@@ -12,6 +13,7 @@ export function useNow(): Date {
       timer = window.setTimeout(tick, 1000 - (Date.now() % 1000));
     };
 
+    setNow(new Date());
     timer = window.setTimeout(tick, 1000 - (Date.now() % 1000));
 
     const onVisibility = () => {
@@ -27,7 +29,7 @@ export function useNow(): Date {
       window.clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, []);
+  }, [paused]);
 
   return now;
 }

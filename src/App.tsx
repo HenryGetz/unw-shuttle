@@ -4,8 +4,10 @@ import { BILLY_FINALS_STOP, BILLY_REGULAR_STOP } from './data/route';
 import type { StopId } from './data/types';
 import { busStateAt, nextService, serviceInfoAt } from './lib/schedule';
 import { setDefaultCamera, setViewMode, skipOnboarding, useShuttlePrefs } from './lib/prefs';
+import { readDebugState, writeDebugState, type DebugClockState } from './lib/debugClock';
 import { Header } from './components/Header';
 import { GlancePanel } from './components/GlancePanel';
+import { DebugClock } from './components/DebugClock';
 import { MapPanel } from './components/MapPanel';
 import { PinnedStops } from './components/PinnedStops';
 import { Onboarding } from './components/Onboarding';
@@ -18,7 +20,11 @@ import './styles/shell.css';
 import './styles/glance.css';
 
 export function App() {
-  const now = useNow();
+  const [debugClock, setDebugClock] = useState<DebugClockState>(() =>
+    readDebugState(window.location.search),
+  );
+  const realNow = useNow(debugClock.at !== null);
+  const now = debugClock.at ?? realNow;
   const info = serviceInfoAt(now);
   const bus = busStateAt(now);
   const prefs = useShuttlePrefs();
@@ -34,6 +40,24 @@ export function App() {
   const resetMap = () => {
     setResetToken((token) => token + 1);
     setDefaultCamera('overview');
+  };
+
+  const simulateAt = (at: Date) => {
+    const next = { enabled: true, at };
+    setDebugClock(next);
+    writeDebugState(next);
+  };
+
+  const resumeLive = () => {
+    const next = { enabled: true, at: null };
+    setDebugClock(next);
+    writeDebugState(next);
+  };
+
+  const exitDebug = () => {
+    const next = { enabled: false, at: null };
+    setDebugClock(next);
+    writeDebugState(next);
   };
 
   // On phones the map sits below the countdowns, and any layout can select a
@@ -111,8 +135,16 @@ export function App() {
         </div>
       </main>
       <Footer />
-      <Onboarding open={!prefs.onboarded} onClose={skipOnboarding} />
+      <Onboarding open={!prefs.onboarded && !debugClock.enabled} onClose={skipOnboarding} />
       <MyStops open={myStopsOpen} onClose={() => setMyStopsOpen(false)} />
+      {debugClock.enabled && (
+        <DebugClock
+          at={debugClock.at}
+          onChange={simulateAt}
+          onLive={resumeLive}
+          onExit={exitDebug}
+        />
+      )}
     </div>
   );
 }

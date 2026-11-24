@@ -51,6 +51,22 @@ pnpm build      # static build in dist/
 pnpm preview    # serve the production build
 ```
 
+## Debug clock
+
+Add `?debug=1` to the URL to show a small debug clock. Pick any Chicago date and
+time and press **Show** to freeze the dashboard and map at that moment. The URL
+updates as you change it, so a scenario can be bookmarked or shared:
+
+```text
+https://henrygetz.github.io/unw-shuttle/?debug=1&at=2026-11-23T10:17:00
+```
+
+`at` is an America/Chicago wall time; seconds are optional. `Now` freezes at the
+current instant, **Resume live** returns to the ticking clock, and the close
+button exits debug mode. Debug mode also skips the first-visit onboarding so a
+shared scenario opens directly on the dashboard. `?debug=0` disables the flag
+if it is present.
+
 ## Personalization
 
 The first-visit onboarding is skippable. Its state lives under one versioned

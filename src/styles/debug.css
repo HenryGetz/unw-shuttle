@@ -1,0 +1,200 @@
+/* Debug-only time travel. Never rendered without ?debug in the URL. */
+.debug-clock {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 80;
+  width: min(390px, calc(100vw - 24px));
+  border: 1px solid color-mix(in srgb, var(--gold) 42%, var(--line-strong));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--hud-solid) 94%, transparent);
+  padding: 11px 12px 10px;
+  color: var(--text);
+  box-shadow: var(--shadow-float);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  backdrop-filter: blur(18px) saturate(130%);
+}
+
+.debug-clock__form {
+  display: grid;
+  gap: 9px;
+}
+
+.debug-clock__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.debug-clock__badge {
+  border-radius: 4px;
+  background: var(--gold);
+  padding: 3px 6px 2px;
+  color: var(--gold-ink);
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.debug-clock__state {
+  color: var(--text-2);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.debug-clock__close {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  margin-left: auto;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  padding: 0;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.debug-clock__close:hover {
+  background: var(--lavender-soft);
+  color: var(--text);
+}
+
+.debug-clock__close svg {
+  width: 13px;
+  height: 13px;
+}
+
+.debug-clock__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 7px;
+}
+
+.debug-clock__field {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.debug-clock__field > span {
+  color: var(--text-4);
+  font-size: 0.6rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.debug-clock__field input {
+  width: 100%;
+  height: 36px;
+  min-width: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 0 8px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color-scheme: dark;
+}
+
+.debug-clock__field input:focus-visible {
+  border-color: var(--gold);
+  outline: 2px solid color-mix(in srgb, var(--gold) 44%, transparent);
+  outline-offset: 1px;
+}
+
+.debug-clock__field input[aria-invalid='true'] {
+  border-color: color-mix(in srgb, var(--danger) 60%, var(--line-strong));
+}
+
+.debug-clock__apply {
+  height: 36px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--gold);
+  padding: 0 14px;
+  color: var(--gold-ink);
+  font-family: var(--font-body);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.debug-clock__apply:hover:not(:disabled) {
+  background: var(--gold-bright);
+}
+
+.debug-clock__apply:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.debug-clock__error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.debug-clock__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.debug-clock__actions button {
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--pill);
+  background: transparent;
+  padding: 0 10px;
+  color: var(--text-2);
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.debug-clock__actions button:hover {
+  border-color: color-mix(in srgb, var(--gold) 42%, var(--line-strong));
+  color: var(--text);
+}
+
+.debug-clock__hint {
+  margin-left: auto;
+  color: var(--text-4);
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 560px) {
+  .debug-clock {
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: max(10px, env(safe-area-inset-left));
+    width: auto;
+  }
+
+  .debug-clock__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .debug-clock__apply {
+    width: 100%;
+  }
+
+  .debug-clock__hint {
+    display: none;
+  }
+}
